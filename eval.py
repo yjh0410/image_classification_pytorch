@@ -22,8 +22,8 @@ def parse_args():
     # Model
     parser.add_argument('-m', '--model', type=str, default='resnet18',
                         help='resnet18, resnet34, ...')
-    parser.add_argument('--weight', type=str, 
-                        default='weights/')
+    parser.add_argument('--weight', type=str, default='weights/',
+                        help='path to weight')
 
     # dataset
     parser.add_argument('-root', '--data_path', type=str, default='/mnt/share/ssd2/dataset',
@@ -42,14 +42,14 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # use cuda
+    # 指定cuda来调用GPU训练，默认不用，但要是安装了GPU版torch，一定要用
     if args.cuda:
         print("use cuda")
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
 
-    # dataset
+    # 构建数据集
     pixel_mean = [0.]
     pixel_std = [1.0]
     val_data_root = os.path.join(args.data_path, 'val')
@@ -69,14 +69,15 @@ def main():
     
     print('total validation data size : ', len(val_dataset))
 
-    # build model
+    # 构建模型
     model = build_model(model_name=args.model, 
                         num_classes=args.num_classes)
+    # 加载训练好的模型文件，args.weight就是指向模型权重文件的路径
     model.load_state_dict(torch.load(args.weight, map_location='cpu')["model"], strict=False)
     model = model.to(device).eval()
     print('Finished loading model!')
 
-    # define loss function
+    # 定义loss函数，这是标准的分类问题使用的交叉熵函数
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
     print("-------------- start training ----------------")

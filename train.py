@@ -63,18 +63,18 @@ def main():
     path_to_save = os.path.join(args.path_to_save)
     os.makedirs(path_to_save, exist_ok=True)
     
-    # use cuda
+    # 指定cuda来调用GPU训练，默认不用，但要是安装了GPU版torch，一定要用
     if args.cuda:
         print("use cuda")
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
 
-    # mosaic ema
+    # 这是一个trick，默认不用
     if args.ema:
         print('use EMA ...')
 
-    # use tfboard
+    # 调用tensorboard来保存训练结果，默认不用
     if args.tfboard:
         print('use tensorboard')
         from torch.utils.tensorboard import SummaryWriter
@@ -84,25 +84,27 @@ def main():
 
         tblogger = SummaryWriter(log_path)
 
-    # dataset
-    pixel_mean = [0.]
-    pixel_std = [1.0]
-    train_data_root = os.path.join(args.data_path, 'train')
-    val_data_root = os.path.join(args.data_path, 'val')
+    # 构建数据集
+    pixel_mean = [0.]   # 色彩通道均值，根据你的数据集，给0就行
+    pixel_std = [1.0]   # 色彩通道方差，根据你的数据集，给1就行
+    train_data_root = os.path.join(args.data_path, 'train')  # 训练集路径
+    val_data_root = os.path.join(args.data_path, 'val')      # 验证集路径
+    ## 训练集，用于读取训练集图像
     train_dataset = torchvision.datasets.ImageFolder(
                         root=train_data_root,
-                        transform=tf.Compose([
-                            tf.RandomResizedCrop(args.img_size),
-                            tf.RandomHorizontalFlip(),
-                            tf.ToTensor(),
-                            tf.Normalize(pixel_mean,
-                                        pixel_std)]))
+                        transform=tf.Compose([ # 这个参数是传入数据预处理
+                            tf.RandomResizedCrop(args.img_size),  ## resize操作
+                            tf.RandomHorizontalFlip(),            ## 随机水平翻转
+                            tf.ToTensor(),                        ## 转换成torch所需的tensor类型数据
+                            tf.Normalize(pixel_mean,             ## 图片归一化操作
+                                         pixel_std)]))
     train_loader = torch.utils.data.DataLoader(
                         dataset=train_dataset, 
                         batch_size=args.batch_size, 
                         shuffle=True,
                         num_workers=args.num_workers, 
                         pin_memory=True)
+    ## 验证集，用于读取验证集图像
     val_dataset = torchvision.datasets.ImageFolder(
                         root=val_data_root, 
                         transform=tf.Compose([
@@ -121,28 +123,28 @@ def main():
     print('Train data length : ', len(train_dataset))
     print('Val data length : ', len(val_dataset))
 
-    # build model
+    # 构建模型
     model = build_model(model_name=args.model, 
                         pretrained=args.pretrained, 
                         norm_type=args.norm_type,
                         num_classes=args.num_classes)
-
+    # 将模型转换为train模式
     model.train().to(device)
-    ema = ModelEMA(model) if args.ema else None
+    ema = ModelEMA(model) if args.ema else None  # EMA是一个训练技巧，我暂时都没用，所以这里ema=None
 
-    # compute FLOPs and Params
+    # 计算模型的FLOPs和参数量，可能对你的任务不需要这两个指标
     model_copy = deepcopy(model)
     model_copy.eval()
     FLOPs_and_Params(model=model, size=args.img_size)
     model_copy.train()
 
-    # basic setup
+    # 一些基础设置
     best_acc1 = -1.
     base_lr = args.lr
     tmp_lr = base_lr
     epoch_size = len(train_loader)
 
-    # optimizer
+    # 构建优化器，用SGD就行
     if args.optimizer == 'adamw':
         optimizer = optim.AdamW(model.parameters(), 
                                 lr=base_lr,
@@ -152,38 +154,43 @@ def main():
                                 lr=base_lr,
                                 weight_decay=1e-4)
 
-    # define loss function
+    # 定义loss函数，这是标准的分类问题使用的交叉熵函数
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
     t0 = time.time()
     print("-------------- start training ----------------")
     for epoch in range(args.max_epoch):
-        # use cos step
+        # Cosine学习率衰减策略
         tmp_lr = 1e-5 + 0.5*(base_lr - 1e-5)*(1 + math.cos(math.pi*epoch / args.max_epoch))
+        # 调整优化器中的学习率
         set_lr(optimizer, tmp_lr)
 
-        # train one epoch
+        # 训练一个完整的epoch，一个epoch就是把数据集中的数据全都训练一次
         for iter_i, (images, target) in enumerate(train_loader):
             ni = iter_i + epoch * epoch_size
                 
-            # to tensor
+            # 将读进来的数据放在指定的device上，device在上面已定义
             images = images.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
 
-            # compute output
+            # 将数据喂给模型，得到输出
             output = model(images)
+
+            # 计算模型输出与label之间的损失
             loss = criterion(output, target)
 
-            # check NAN
+            # 检查loss是不是None，一般情况下这一步不会有问题
             if torch.isnan(loss):
                 continue
 
-            # measure accuracy and record loss
+            # 测试模型当前的预测精度，默认使用top1指标
             acc1 = accuracy(output, target, topk=(1,))            
 
-            # compute gradient and do SGD step
+            # 反向传播
             optimizer.zero_grad()
             loss.backward()
+
+            # 更新模型参数
             optimizer.step()
 
             # ema
@@ -191,6 +198,7 @@ def main():
                 ema.update(model)
 
             if iter_i % 10 == 0:
+                # 一些输出界面的信息，能让你看到训练情况
                 if args.tfboard:
                     # viz loss
                     tblogger.add_scalar('loss',  loss.item(),  ni)
@@ -212,7 +220,7 @@ def main():
                 
                 t0 = time.time()
 
-        # evaluate
+        # 每训练完一个epoch，在验证集上测试一下top1准确率
         print('evaluating ...')
         loss, acc1 = validate(device, val_loader, model, criterion)
         print('On val dataset: [loss: %.2f][acc1: %.2f]' 
@@ -220,7 +228,7 @@ def main():
                    acc1[0].item()),
                 flush=True)
 
-        # remember best acc@1 and save checkpoint
+        # 保存准确率最高的模型
         is_best = acc1 > best_acc1
         best_acc1 = max(acc1, best_acc1)
         if is_best:
