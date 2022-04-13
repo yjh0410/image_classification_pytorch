@@ -37,7 +37,7 @@ def parse_args():
     # Model
     parser.add_argument('-m', '--model', type=str, default='resnet18',
                         help='resnet18, resnet34, ...')
-    parser.add_argument('-p', 'pretrained', action='store_true', default=False,
+    parser.add_argument('-p', '--pretrained', action='store_true', default=False,
                         help='use imagenet pretrained weight.')
     parser.add_argument('--norm_type', type=str, default='BN',
                         help='normalization layer.')
