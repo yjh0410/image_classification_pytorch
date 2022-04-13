@@ -133,7 +133,6 @@ def main():
     best_acc1 = -1.
     base_lr = args.lr
     tmp_lr = base_lr
-    wp_epoch = 1
     max_epoch = args.max_epoch
     epoch_size = len(train_loader)
 
@@ -160,16 +159,6 @@ def main():
         # train one epoch
         for iter_i, (images, target) in enumerate(train_loader):
             ni = iter_i + epoch * epoch_size
-            # warmup
-            if epoch < wp_epoch:
-                nw = wp_epoch * epoch_size
-                tmp_lr = base_lr * pow(ni / nw, 4)
-                set_lr(optimizer, tmp_lr)
-
-            elif epoch == wp_epoch and iter_i == 0:
-                # warmup is over
-                tmp_lr = base_lr
-                set_lr(optimizer, tmp_lr)
                 
             # to tensor
             images = images.to(device, non_blocking=True)
