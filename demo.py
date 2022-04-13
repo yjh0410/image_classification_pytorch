@@ -85,6 +85,7 @@ def main():
 
             # inference
             output = model(images)
+            output = output[0]  # [C]
             # output = output[0].softmax()
             scores, indices = torch.topk(output, 1)
 
