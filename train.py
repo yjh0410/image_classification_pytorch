@@ -114,7 +114,9 @@ def main():
                         num_workers=args.num_workers, 
                         pin_memory=True)
     
-    print('total train data size : ', len(train_dataset))
+    print('========================')
+    print('Train data length : ', len(train_dataset))
+    print('Val data length : ', len(train_dataset))
 
     # build model
     model = build_model(model_name=args.model, 
