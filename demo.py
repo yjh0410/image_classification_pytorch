@@ -86,7 +86,7 @@ def main():
             # inference
             output = model(images)
             # output = output[0].softmax()
-            _, pred = output.topk(output, 1, True, True)
+            scores, indices = torch.topk(output, 1)
 
             # convert tensor to numpy
             image = images[0].cpu().numpy()
