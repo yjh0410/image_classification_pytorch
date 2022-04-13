@@ -4,7 +4,7 @@ python train.py --cuda \
                 -m resnet18 \
                 -p \
                 --norm_type BN \
-                --max_epoch 20 \
+                --max_epoch 10 \
                 --batch_size 16 \
                 --img_size 224 \
                 --optimizer sgd \
