@@ -116,7 +116,7 @@ def main():
     
     print('========================')
     print('Train data length : ', len(train_dataset))
-    print('Val data length : ', len(train_dataset))
+    print('Val data length : ', len(val_dataset))
 
     # build model
     model = build_model(model_name=args.model, 
@@ -233,7 +233,7 @@ def main():
         best_acc1 = max(acc1, best_acc1)
         if is_best:
             print('saving the model ...')
-            weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch + 1, acc1*100)
+            weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch + 1, acc1.item()*100)
             checkpoint_path = os.path.join(path_to_save, weight_name)
             torch.save({'model': model.state_dict(),
                         'optimizer': optimizer.state_dict(),
