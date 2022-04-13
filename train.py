@@ -177,7 +177,7 @@ def main():
                 continue
 
             # measure accuracy and record loss
-            acc1, acc5 = accuracy(output, target, topk=(1, 5))            
+            acc1 = accuracy(output, target, topk=(1,))            
 
             # compute gradient and do SGD step
             optimizer.zero_grad()
@@ -193,7 +193,6 @@ def main():
                     # viz loss
                     tblogger.add_scalar('loss',  loss.item(),  ni)
                     tblogger.add_scalar('acc1',  acc1.item(),  ni)
-                    tblogger.add_scalar('acc5',  acc5.item(),  ni)
                 
                 t1 = time.time()
                 # basic infor
@@ -204,7 +203,6 @@ def main():
                 log += '[loss: {:.6f}]'.format(loss.item())
                 # other infor
                 log += '[acc1: {:.2f}]'.format(acc1.item())
-                log += '[acc5: {:.2f}]'.format(acc5.item())
                 log += '[time: {:.2f}]'.format(t1 - t0)
 
                 # print log infor
@@ -214,11 +212,10 @@ def main():
 
         # evaluate
         print('evaluating ...')
-        loss, acc1, acc5 = validate(device, val_loader, model, criterion)
-        print('On val dataset: [loss: %.2f][acc1: %.2f][acc5: %.2f]' 
+        loss, acc1 = validate(device, val_loader, model, criterion)
+        print('On val dataset: [loss: %.2f][acc1: %.2f]' 
                 % (loss.item(), 
-                   acc1.item(), 
-                   acc5.item()),
+                   acc1.item()),
                 flush=True)
 
         # remember best acc@1 and save checkpoint
@@ -238,7 +235,6 @@ def validate(device, val_loader, model, criterion):
     # switch to evaluate mode
     model.eval()
     acc1_num_pos = 0.
-    acc5_num_pos = 0.
     count = 0.
     with torch.no_grad():
         for i, (images, target) in enumerate(val_loader):
@@ -254,22 +250,20 @@ def validate(device, val_loader, model, criterion):
             loss = criterion(output, target)
 
             # accuracy
-            cur_acc1, cur_acc5 = accuracy(output, target, topk=(1, 5))
+            cur_acc1 = accuracy(output, target, topk=(1,))
 
             # Count the number of positive samples
             bs = images.shape[0]
             count += bs
             acc1_num_pos += cur_acc1 * bs
-            acc5_num_pos += cur_acc5 * bs
         
         # top1 acc & top5 acc
         acc1 = acc1_num_pos / count
-        acc5 = acc5_num_pos / count
 
     # switch to train mode
     model.train()
 
-    return loss, acc1, acc5
+    return loss, acc1
 
 
 def set_lr(optimizer, lr):
