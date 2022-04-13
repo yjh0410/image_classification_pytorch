@@ -90,7 +90,7 @@ def main():
             output = output[0]  # [C]
             # output = output[0].softmax()
             score, label = torch.topk(output, 1)
-            print(score, label)
+            print('Score: {:.3f} || Label: {}'.format(score.item(), label.item()))
 
             # convert tensor to numpy
             image = images[0].cpu().permute(1, 2, 0).numpy()
