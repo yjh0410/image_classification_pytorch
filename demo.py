@@ -50,8 +50,8 @@ def main():
         device = torch.device("cpu")
 
     # dataset
-    pixel_mean = [0.485, 0.456, 0.406]
-    pixel_std = [0.229, 0.224, 0.225]
+    pixel_mean = [0.]
+    pixel_std = [1.0]
     val_data_root = os.path.join(args.data_path, 'val')
     val_dataset = torchvision.datasets.ImageFolder(
                         root=val_data_root, 
