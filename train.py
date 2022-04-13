@@ -85,6 +85,8 @@ def main():
         tblogger = SummaryWriter(log_path)
 
     # dataset
+    pixel_mean = [0.]
+    pixel_std = [1.0]
     train_data_root = os.path.join(args.data_path, 'train')
     val_data_root = os.path.join(args.data_path, 'val')
     train_dataset = torchvision.datasets.ImageFolder(
@@ -93,8 +95,8 @@ def main():
                             tf.RandomResizedCrop(args.img_size),
                             tf.RandomHorizontalFlip(),
                             tf.ToTensor(),
-                            tf.Normalize([0.485, 0.456, 0.406],
-                                        [0.229, 0.224, 0.225])]))
+                            tf.Normalize(pixel_mean,
+                                        pixel_std)]))
     train_loader = torch.utils.data.DataLoader(
                         dataset=train_dataset, 
                         batch_size=args.batch_size, 
@@ -106,8 +108,8 @@ def main():
                         transform=tf.Compose([
                             tf.Resize(args.img_size),
                             tf.ToTensor(),
-                            tf.Normalize([0.485, 0.456, 0.406],
-                                        [0.229, 0.224, 0.225])]))
+                            tf.Normalize(pixel_mean,
+                                        pixel_std)]))
     val_loader = torch.utils.data.DataLoader(
                         dataset=val_dataset,
                         batch_size=args.batch_size, 

@@ -94,8 +94,8 @@ def main():
             # convert tensor to numpy
             image = images[0].cpu().permute(1, 2, 0).numpy()
             # denormalize
-            # to BGR
-            image = image[..., (2, 1, 0)]
+            # # to BGR
+            # image = image[..., (2, 1, 0)]
             image = (image * np.array(pixel_std) + np.array(pixel_mean)) * 255.
             image = image.astype(np.uint8)
 
