@@ -221,8 +221,7 @@ def main():
         best_acc1 = max(acc1, best_acc1)
         if is_best:
             print('saving the model ...')
-            weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch + 1, acc1.item())
-            checkpoint_path = os.path.join(path_to_save, weight_name)
+            checkpoint_path = os.path.join(path_to_save, 'best_model.pth')
             torch.save({'model': model.state_dict(),
                         'optimizer': optimizer.state_dict(),
                         'epoch': epoch,
