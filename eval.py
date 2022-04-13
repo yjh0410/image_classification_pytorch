@@ -94,7 +94,7 @@ def main():
             loss = criterion(output, target)
 
             # accuracy
-            cur_acc1 = accuracy(output, target, topk=(1))
+            cur_acc1 = accuracy(output, target, topk=(1,))
 
             # Count the number of positive samples
             bs = images.shape[0]
