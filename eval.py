@@ -70,7 +70,6 @@ def main():
     # build model
     model = build_model(model_name=args.model, 
                         num_classes=args.num_classes)
-    model.load_state_dict(args.weight)
     model.load_state_dict(torch.load(args.weight, map_location='cpu')["model"], strict=False)
     model = model.to(device).eval()
     print('Finished loading model!')
