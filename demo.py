@@ -86,7 +86,7 @@ def main():
             # inference
             output = model(images)
             print(output.shape)
-            score, label = torch.max(output.softmax(), dim=-1)
+            score, label = torch.max(torch.softmax(output), dim=-1)
 
             # convert tensor to numpy
             image = images[0].cpu().numpy()
