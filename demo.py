@@ -70,8 +70,7 @@ def main():
     print('total validation data size : ', len(val_dataset))
 
     # build model
-    model = build_model(model_name=args.model, 
-                        pretrained=args.pretrained)
+    model = build_model(model_name=args.model)
     model.load_state_dict(args.weight)
     model = model.to(device).eval()
     print('Finished loading model!')
