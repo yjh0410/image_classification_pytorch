@@ -72,6 +72,7 @@ def main():
                         pretrained=args.pretrained,
                         num_classes=args.num_classes)
     model.load_state_dict(args.weight)
+    model.load_state_dict(torch.load(args.weight, map_location='cpu')["model"], strict=False)
     model = model.to(device).eval()
     print('Finished loading model!')
 
@@ -80,12 +81,11 @@ def main():
 
     print("-------------- start training ----------------")
     acc1_num_pos = 0.
-    acc5_num_pos = 0.
     count = 0.
     with torch.no_grad():
         for i, (images, target) in enumerate(val_loader):
             if i % 100 == 0:
-                print("[%d]/[%d] ...".format(i, len(val_loader)))
+                print("[{}]/[{}] ...".format(i, len(val_loader)))
             images = images.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
 
@@ -96,22 +96,19 @@ def main():
             loss = criterion(output, target)
 
             # accuracy
-            cur_acc1, cur_acc5 = accuracy(output, target, topk=(1, 5))
+            cur_acc1 = accuracy(output, target, topk=(1))
 
             # Count the number of positive samples
             bs = images.shape[0]
             count += bs
-            acc1_num_pos += cur_acc1 * bs
-            acc5_num_pos += cur_acc5 * bs
+            acc1_num_pos += cur_acc1[0] * bs
         
         # top1 acc & top5 acc
         acc1 = acc1_num_pos / count
-        acc5 = acc5_num_pos / count
 
-    print('On val dataset: [loss: %.2f][acc1: %.2f][acc5: %.2f]' 
+    print('On val dataset: [loss: %.2f][acc1: %.2f]' 
             % (loss.item(), 
-                acc1.item(), 
-                acc5.item()),
+                acc1.item()),
             flush=True)
 
 
