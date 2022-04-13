@@ -133,7 +133,6 @@ def main():
     best_acc1 = -1.
     base_lr = args.lr
     tmp_lr = base_lr
-    max_epoch = args.max_epoch
     epoch_size = len(train_loader)
 
     # optimizer
@@ -151,9 +150,9 @@ def main():
 
     t0 = time.time()
     print("-------------- start training ----------------")
-    for epoch in range(max_epoch):
+    for epoch in range(args.max_epoch):
         # use cos step
-        tmp_lr = 1e-5 + 0.5*(base_lr - 1e-5)*(1 + math.cos(math.pi*epoch / max_epoch))
+        tmp_lr = 1e-5 + 0.5*(base_lr - 1e-5)*(1 + math.cos(math.pi*epoch / args.max_epoch))
         set_lr(optimizer, tmp_lr)
 
         # train one epoch
@@ -193,7 +192,7 @@ def main():
                 
                 t1 = time.time()
                 # basic infor
-                log =  '[Epoch: {}/{}]'.format(epoch+1, max_epoch)
+                log =  '[Epoch: {}/{}]'.format(epoch+1, args.max_epoch)
                 log += '[Iter: {}/{}]'.format(iter_i, epoch_size)
                 log += '[lr: {:.6f}]'.format(tmp_lr)
                 # loss infor
@@ -222,7 +221,7 @@ def main():
         best_acc1 = max(acc1, best_acc1)
         if is_best:
             print('saving the model ...')
-            weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch + 1, acc1.item()*100)
+            weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch + 1, acc1.item())
             checkpoint_path = os.path.join(path_to_save, weight_name)
             torch.save({'model': model.state_dict(),
                         'optimizer': optimizer.state_dict(),

@@ -3,11 +3,11 @@ import torchvision
 from torchvision import transforms as tf
 
 import os
-import time
+import cv2
+import numpy as np
 import argparse
 
 from models import build_model
-from utils.misc import accuracy
 
 
 def parse_args():
@@ -50,14 +50,16 @@ def main():
         device = torch.device("cpu")
 
     # dataset
+    pixel_mean = [0.485, 0.456, 0.406]
+    pixel_std = [0.229, 0.224, 0.225]
     val_data_root = os.path.join(args.data_path, 'val')
     val_dataset = torchvision.datasets.ImageFolder(
                         root=val_data_root, 
                         transform=tf.Compose([
                             tf.Resize(args.img_size),
                             tf.ToTensor(),
-                            tf.Normalize([0.485, 0.456, 0.406],
-                                        [0.229, 0.224, 0.225])]))
+                            tf.Normalize(pixel_mean,
+                                         pixel_std)]))
     val_loader = torch.utils.data.DataLoader(
                         dataset=val_dataset,
                         batch_size=1, 
@@ -74,13 +76,7 @@ def main():
     model = model.to(device).eval()
     print('Finished loading model!')
 
-    # define loss function
-    criterion = torch.nn.CrossEntropyLoss().to(device)
-
-    print("-------------- start training ----------------")
-    acc1_num_pos = 0.
-    acc5_num_pos = 0.
-    count = 0.
+    print("-------------- run demo ----------------")
     with torch.no_grad():
         for i, (images, target) in enumerate(val_loader):
             if i % 100 == 0:
@@ -90,28 +86,15 @@ def main():
 
             # inference
             output = model(images)
+            score, label = torch.max(output.softmax(), dim=-1)
 
-            # loss
-            loss = criterion(output, target)
+            # convert tensor to numpy
+            image = images[0].cpu().numpy()
+            # denormalize
+            image = (image * np.array(pixel_std) + np.array(pixel_mean)) * 255.
+            image = image.astype(np.uint8)
 
-            # accuracy
-            cur_acc1, cur_acc5 = accuracy(output, target, topk=(1, 5))
-
-            # Count the number of positive samples
-            bs = images.shape[0]
-            count += bs
-            acc1_num_pos += cur_acc1 * bs
-            acc5_num_pos += cur_acc5 * bs
-        
-        # top1 acc & top5 acc
-        acc1 = acc1_num_pos / count
-        acc5 = acc5_num_pos / count
-
-    print('On val dataset: [loss: %.2f][acc1: %.2f][acc5: %.2f]' 
-            % (loss.item(), 
-                acc1.item(), 
-                acc5.item()),
-            flush=True)
+            cv2.imshow('classification', image)
 
 
 
