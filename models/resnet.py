@@ -270,6 +270,7 @@ class ResNet(nn.Module):
 
     def _forward_impl(self, x: Tensor) -> Tensor:
         # See note [TorchScript super()]
+        print(x.shape)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
