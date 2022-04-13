@@ -122,7 +122,8 @@ def main():
     # build model
     model = build_model(model_name=args.model, 
                         pretrained=args.pretrained, 
-                        norm_type=args.norm_type)
+                        norm_type=args.norm_type,
+                        num_classes=args.num_classes)
 
     model.train().to(device)
     ema = ModelEMA(model) if args.ema else None

@@ -69,7 +69,8 @@ def main():
 
     # build model
     model = build_model(model_name=args.model, 
-                        pretrained=args.pretrained)
+                        pretrained=args.pretrained,
+                        num_classes=args.num_classes)
     model.load_state_dict(args.weight)
     model = model.to(device).eval()
     print('Finished loading model!')

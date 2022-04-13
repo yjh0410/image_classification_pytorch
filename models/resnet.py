@@ -1,5 +1,6 @@
 # Copyright: Torchvision
 
+from email.policy import strict
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -301,7 +302,29 @@ def _resnet(
     if pretrained:
         state_dict = load_state_dict_from_url(model_urls[arch],
                                               progress=progress)
-        model.load_state_dict(state_dict)
+        model = load_weight(model, state_dict)
+    return model
+
+
+def load_weight(model, state_dict):
+    # checkpoint state dict
+    checkpoint_state_dict = state_dict
+    # model state dict
+    model_state_dict = model.state_dict()
+    # check
+    for k in list(checkpoint_state_dict.keys()):
+        if k in model_state_dict:
+            shape_model = tuple(model_state_dict[k].shape)
+            shape_checkpoint = tuple(checkpoint_state_dict[k].shape)
+            if shape_model != shape_checkpoint:
+                checkpoint_state_dict.pop(k)
+                print(k)
+        else:
+            checkpoint_state_dict.pop(k)
+            print(k)
+
+    model.load_state_dict(checkpoint_state_dict, strict=False)
+
     return model
 
 
@@ -429,33 +452,33 @@ def wide_resnet101_2(pretrained: bool = False, progress: bool = True, **kwargs: 
                    pretrained, progress, **kwargs)
 
 
-def build_resnet(model_name='resnet18', pretrained=False, norm_type='BN'):
+def build_resnet(model_name='resnet18', pretrained=False, num_classes=2, norm_type='BN'):
     if norm_type == 'BN':
         norm_layer = nn.BatchNorm2d
     elif norm_type == 'FrozeBN':
         norm_layer = FrozenBatchNorm2d
     
     if model_name == 'resnet18':
-        model = resnet18(pretrained=pretrained, norm_layer=norm_layer)
+        model = resnet18(pretrained=pretrained, norm_layer=norm_layer, num_classes=num_classes)
     
     elif model_name == 'resnet34':
-        model = resnet34(pretrained=pretrained, norm_layer=norm_layer)
+        model = resnet34(pretrained=pretrained, norm_layer=norm_layer, num_classes=num_classes)
     
     elif model_name == 'resnet50':
-        model = resnet50(pretrained=pretrained, norm_layer=norm_layer)
+        model = resnet50(pretrained=pretrained, norm_layer=norm_layer, num_classes=num_classes)
     
     elif model_name == 'resnet101':
-        model = resnet101(pretrained=pretrained, norm_layer=norm_layer)
+        model = resnet101(pretrained=pretrained, norm_layer=norm_layer, num_classes=num_classes)
 
     elif model_name == 'resnet152':
-        model = resnet152(pretrained=pretrained, norm_layer=norm_layer)
+        model = resnet152(pretrained=pretrained, norm_layer=norm_layer, num_classes=num_classes)
     
 
     return model
 
 
 if __name__ == "__main__":
-    model = build_resnet(pretrained=True, norm_type='FrozeBN')
+    model = build_resnet(pretrained=True, norm_type='FrozeBN', num_classes=2)
 
     x = torch.randn(2, 3, 64, 64)
     y = model(x)
