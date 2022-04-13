@@ -1,3 +1,4 @@
+from cProfile import label
 import torch
 import torchvision
 from torchvision import transforms as tf
@@ -87,7 +88,8 @@ def main():
             output = model(images)
             output = output[0]  # [C]
             # output = output[0].softmax()
-            scores, indices = torch.topk(output, 1)
+            score, label = torch.topk(output, 1)
+            print(score, label)
 
             # convert tensor to numpy
             image = images[0].cpu().permute(1, 2, 0).numpy()
