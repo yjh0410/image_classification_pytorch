@@ -90,7 +90,7 @@ def main():
             scores, indices = torch.topk(output, 1)
 
             # convert tensor to numpy
-            image = images[0].cpu().numpy()
+            image = images[0].cpu().permute(1, 2, 0).numpy()
             # denormalize
             image = (image * np.array(pixel_std) + np.array(pixel_mean)) * 255.
             image = image.astype(np.uint8)
