@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 import time
 import math
@@ -127,7 +128,10 @@ def main():
     ema = ModelEMA(model) if args.ema else None
 
     # compute FLOPs and Params
+    model_copy = deepcopy(model)
+    model_copy.eval()
     FLOPs_and_Params(model=model, size=args.img_size)
+    model_copy.train()
 
     # basic setup
     best_acc1 = -1.
