@@ -192,7 +192,7 @@ def main():
                 if args.tfboard:
                     # viz loss
                     tblogger.add_scalar('loss',  loss.item(),  ni)
-                    tblogger.add_scalar('acc1',  acc1.item(),  ni)
+                    tblogger.add_scalar('acc1',  acc1[0].item(),  ni)
                 
                 t1 = time.time()
                 # basic infor
@@ -202,7 +202,7 @@ def main():
                 # loss infor
                 log += '[loss: {:.6f}]'.format(loss.item())
                 # other infor
-                log += '[acc1: {:.2f}]'.format(acc1.item())
+                log += '[acc1: {:.2f}]'.format(acc1[0].item())
                 log += '[time: {:.2f}]'.format(t1 - t0)
 
                 # print log infor
@@ -215,7 +215,7 @@ def main():
         loss, acc1 = validate(device, val_loader, model, criterion)
         print('On val dataset: [loss: %.2f][acc1: %.2f]' 
                 % (loss.item(), 
-                   acc1.item()),
+                   acc1[0].item()),
                 flush=True)
 
         # remember best acc@1 and save checkpoint
@@ -250,12 +250,12 @@ def validate(device, val_loader, model, criterion):
             loss = criterion(output, target)
 
             # accuracy
-            cur_acc1, = accuracy(output, target, topk=(1,))
+            cur_acc1 = accuracy(output, target, topk=(1,))
 
             # Count the number of positive samples
             bs = images.shape[0]
             count += bs
-            acc1_num_pos += cur_acc1 * bs
+            acc1_num_pos += cur_acc1[0] * bs
         
         # top1 acc & top5 acc
         acc1 = acc1_num_pos / count
