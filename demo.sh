@@ -1,4 +1,4 @@
-python train.py --cuda \
+python demo.py --cuda \
                 --data_path data/zitai/ \
                 --num_classes 2 \
                 -m resnet18 \
