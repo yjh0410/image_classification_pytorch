@@ -86,6 +86,7 @@ def main():
 
             # inference
             output = model(images)
+            output = torch.softmax(output, dim=-1)
             output = output[0]  # [C]
             # output = output[0].softmax()
             score, label = torch.topk(output, 1)
@@ -94,6 +95,8 @@ def main():
             # convert tensor to numpy
             image = images[0].cpu().permute(1, 2, 0).numpy()
             # denormalize
+            # to BGR
+            image = image[..., (2, 1, 0)]
             image = (image * np.array(pixel_std) + np.array(pixel_mean)) * 255.
             image = image.astype(np.uint8)
 
