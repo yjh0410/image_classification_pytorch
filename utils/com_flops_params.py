@@ -10,7 +10,7 @@ def FLOPs_and_Params(model, size):
     model.eval()
 
     flops, params = profile(model, inputs=(x, ))
-    print('FLOPs : ', flops / 1e6, ' M')
+    print('FLOPs : ', flops / 1e9, ' B')
     print('Params : ', params / 1e6, ' M')
 
     model.train()
