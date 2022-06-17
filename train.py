@@ -137,7 +137,7 @@ def main():
     # FLOPs * Params
     model_copy = deepcopy(model)
     model_copy.eval()
-    FLOPs_and_Params(model=model, size=args.img_size)
+    FLOPs_and_Params(model=model, size=224)
     model_copy.train()
 
     # basic config
