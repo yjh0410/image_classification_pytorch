@@ -136,7 +136,7 @@ def build_cspd(model_name='cspd-l', pretrained=False):
         return cspdarknet_m(pretrained)
 
 
-def cspdarknet_s(pretrained=False, width=0.5, depth=0.33):
+def cspdarknet_s(pretrained=False, width=0.5, depth=0.34):
     # model
     model = CSPDarkNet(width=width, depth=depth)
 
@@ -226,7 +226,7 @@ def cspdarknet_l(pretrained=False, width=1.0, depth=1.0):
     return model
 
 
-def cspdarknet_x(pretrained=False, width=1.25, depth=1.33):
+def cspdarknet_x(pretrained=False, width=1.25, depth=1.34):
     # model
     model = CSPDarkNet(width=width, depth=depth)
 
@@ -258,7 +258,7 @@ def cspdarknet_x(pretrained=False, width=1.25, depth=1.33):
 
 if __name__ == '__main__':
     import time
-    net = cspdarknet_s()
+    net = cspdarknet_x()
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = net(x)
