@@ -1,11 +1,10 @@
 python train.py --cuda \
-                --data_path data/zitai01/ \
-                --num_classes 2 \
-                -m resnet18 \
-                -p \
-                --norm_type BN \
-                --max_epoch 10 \
-                --batch_size 16 \
-                --img_size 224 \
+                --data_path /mnt/share/ssd2/dataset/imagenet/ \
+                --num_classes 1000 \
+                -m cspd-s \
+                --max_epoch 300 \
+                --batch_size 256 \
+                --img_size 256 \
                 --optimizer sgd \
-                --lr 1e-3 \
+                --base_lr 0.1 \
+                --min_lr_ratio 0.05
