@@ -52,8 +52,6 @@ def parse_args():
                         help='path to dataset')
 
     # model config
-    parser.add_argument('-size', '--img_size', type=int, default=256,
-                        help='input size')
     parser.add_argument('--num_classes', type=int, default=16,
                         help='number of classes')
 
@@ -97,7 +95,7 @@ def main():
     train_dataset = torchvision.datasets.ImageFolder(
                         root=train_data_root,
                         transform=tf.Compose([
-                            tf.RandomResizedCrop(args.img_size),
+                            tf.RandomResizedCrop(224),
                             tf.RandomHorizontalFlip(),
                             tf.ToTensor(),
                             tf.Normalize(pixel_mean,
@@ -112,7 +110,8 @@ def main():
     val_dataset = torchvision.datasets.ImageFolder(
                         root=val_data_root, 
                         transform=tf.Compose([
-                            tf.Resize(args.img_size),
+                            tf.Resize(256),
+                            tf.CenterCrop(224),
                             tf.ToTensor(),
                             tf.Normalize(pixel_mean,
                                         pixel_std)]))
