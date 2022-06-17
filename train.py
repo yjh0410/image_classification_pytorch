@@ -21,6 +21,8 @@ def parse_args():
                         help='use cuda')
     parser.add_argument('--batch_size', type=int,
                         default=256, help='batch size')
+    parser.add_argument('--wp_epoch', type=int, default=5, 
+                        help='warmup epoch')
     parser.add_argument('--max_epoch', type=int, default=300, 
                         help='max epoch')
     parser.add_argument('--num_workers', type=int, default=4,
@@ -145,6 +147,10 @@ def main():
     min_lr = base_lr * args.min_lr_ratio
     tmp_lr = base_lr
     epoch_size = len(train_loader)
+    wp_iter = len(train_loader) * args.wp_epoch
+    total_epochs = args.max_epoch + args.wp_epoch
+    lr_schedule = True
+    warmup = True
 
     # optimizer
     if args.optimizer == 'adamw':
@@ -161,15 +167,35 @@ def main():
 
     t0 = time.time()
     print("-------------- start training ----------------")
-    for epoch in range(args.max_epoch):
-        # Cosine Annealing Scheduler
-        tmp_lr = min_lr + 0.5*(base_lr - min_lr)*(1 + math.cos(math.pi*epoch / args.max_epoch))
-        set_lr(optimizer, tmp_lr)
+    for epoch in range(total_epochs):
+        if not warmup:
+            # use cos lr decay
+            T_max = total_epochs - 15
+            if epoch + 1 > T_max and lr_schedule:
+                print('Cosine annealing is over !!')
+                lr_schedule = False
+                set_lr(optimizer, min_lr)
+
+            if lr_schedule:
+                # Cosine Annealing Scheduler
+                tmp_lr = min_lr + 0.5*(base_lr - min_lr)*(1 + math.cos(math.pi*epoch / T_max))
+                set_lr(optimizer, tmp_lr)
 
         # train one epoch
         for iter_i, (images, target) in enumerate(train_loader):
             ni = iter_i + epoch * epoch_size
-                
+
+            # warmup
+            if ni < wp_iter:
+                alpha = ni / wp_iter
+                warmup_factor = 0.00066667 * (1 - alpha) + alpha
+                tmp_lr = base_lr * warmup_factor
+                set_lr(optimizer, tmp_lr)
+            elif ni == wp_iter:
+                print('Warmup is Over !!!')
+                warmup = False
+                set_lr(optimizer, base_lr)
+
             images = images.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
 
