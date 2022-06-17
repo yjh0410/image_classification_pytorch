@@ -183,7 +183,7 @@ def main():
                 continue
 
             # accu
-            acc1 = accuracy(output, target, topk=(1, 5,))            
+            acc = accuracy(output, target, topk=(1, 5,))            
 
             # bp
             optimizer.zero_grad()
@@ -198,7 +198,8 @@ def main():
                 if args.tfboard:
                     # viz loss
                     tblogger.add_scalar('loss',  loss.item(),  ni)
-                    tblogger.add_scalar('acc1',  acc1[0].item(),  ni)
+                    tblogger.add_scalar('acc1',  acc[0].item(),  ni)
+                    tblogger.add_scalar('acc5',  acc[1].item(),  ni)
                 
                 t1 = time.time()
                 # basic infor
@@ -208,7 +209,8 @@ def main():
                 # loss infor
                 log += '[loss: {:.6f}]'.format(loss.item())
                 # other infor
-                log += '[acc1: {:.2f}]'.format(acc1[0].item())
+                log += '[acc1: {:.2f}]'.format(acc[0].item())
+                log += '[acc5: {:.2f}]'.format(acc[1].item())
                 log += '[time: {:.2f}]'.format(t1 - t0)
 
                 # print log infor

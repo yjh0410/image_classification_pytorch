@@ -36,11 +36,10 @@ class ResidualBlock(nn.Module):
         super(ResidualBlock, self).__init__()
         self.conv1 = Conv(in_ch, in_ch, k=1)
         self.conv2 = Conv(in_ch, in_ch, k=3, p=1, act=False)
-        self.act = nn.LeakyReLU(0.1, inplace=True)
 
     def forward(self, x):
         h = self.conv2(self.conv1(x))
-        out = self.act(x + h)
+        out = x + h
 
         return out
 
