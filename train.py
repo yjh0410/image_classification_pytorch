@@ -53,8 +53,6 @@ def parse_args():
 
     parser.add_argument('--ema', action='store_true', default=False,
                         help='use ema.')
-    parser.add_argument('-dist', '--distribute', action='store_true', default=False,
-                        help='use ema.')
     # Model
     parser.add_argument('-m', '--model', type=str, default='resnet18',
                         help='resnet18, resnet34, ...')
