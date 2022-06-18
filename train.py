@@ -84,6 +84,7 @@ def parse_args():
     
 def main():
     args = parse_args()
+    print(args)
 
     # dist
     print('World size: {}'.format(distributed_utils.get_world_size()))
@@ -195,13 +196,14 @@ def main():
         optimizer = optim.AdamW(
             model_without_ddp.parameters(), 
             lr=base_lr,
-            weight_decay=1e-4
+            weight_decay=args.weight_decay
             )
     elif args.optimizer == 'sgd':
         optimizer = optim.SGD(
             model_without_ddp.parameters(),
+            momentum=args.momentum,
             lr=base_lr,
-            weight_decay=1e-4
+            weight_decay=args.weight_decay
             )
 
     # loss
