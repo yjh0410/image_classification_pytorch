@@ -60,6 +60,8 @@ def parse_args():
                         help='use imagenet pretrained weight.')
     parser.add_argument('--norm_type', type=str, default='BN',
                         help='normalization layer.')
+    parser.add_argument('-r', '--resume', default=None, type=str,
+                        help='keep training')
 
     # dataset
     parser.add_argument('-root', '--data_path', type=str, default='/mnt/share/ssd2/dataset',
@@ -154,10 +156,13 @@ def main():
     print('Val data length : ', len(val_dataset))
 
     # model
-    model = build_model(model_name=args.model, 
-                        pretrained=args.pretrained, 
-                        norm_type=args.norm_type,
-                        num_classes=args.num_classes)
+    model = build_model(
+        model_name=args.model,
+        pretrained=args.pretrained, 
+        norm_type=args.norm_type,
+        num_classes=args.num_classes,
+        resume=args.resume
+        )
     model.train().to(device)
 
     # DDP
@@ -208,12 +213,21 @@ def main():
             weight_decay=args.weight_decay
             )
 
+    start_epoch = 0
+    if args.resume is not None:
+        print('keep training: ', args.resume)
+        checkpoint = torch.load(args.resume)
+        # checkpoint state dict
+        checkpoint_state_dict = checkpoint.pop("optimizer")
+        optimizer.load_state_dict(checkpoint_state_dict)
+        start_epoch = checkpoint.pop("epoch")
+
     # loss
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
     t0 = time.time()
     print("-------------- start training ----------------")
-    for epoch in range(total_epochs):
+    for epoch in range(start_epoch, total_epochs):
         if not warmup:
             # use cos lr decay
             T_max = total_epochs - 15
