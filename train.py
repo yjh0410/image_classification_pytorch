@@ -193,12 +193,14 @@ def main():
 
     # optimizer
     if args.optimizer == 'adamw':
+        print('Optimizer: AdamW')
         optimizer = optim.AdamW(
             model_without_ddp.parameters(), 
             lr=base_lr,
             weight_decay=args.weight_decay
             )
     elif args.optimizer == 'sgd':
+        print('Optimizer: SGD')
         optimizer = optim.SGD(
             model_without_ddp.parameters(),
             momentum=args.momentum,
