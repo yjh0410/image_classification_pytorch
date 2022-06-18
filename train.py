@@ -93,7 +93,7 @@ def main():
         print("git:\n  {}\n".format(distributed_utils.get_sha()))
 
 
-    path_to_save = os.path.join(args.path_to_save)
+    path_to_save = os.path.join(args.path_to_save, args.model)
     os.makedirs(path_to_save, exist_ok=True)
     
     # use gpu
