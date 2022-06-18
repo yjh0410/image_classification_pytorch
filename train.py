@@ -278,7 +278,7 @@ def main():
                 
                 t1 = time.time()
                 # basic infor
-                log =  '[Epoch: {}/{}]'.format(epoch+1, args.max_epoch)
+                log =  '[Epoch: {}/{}]'.format(epoch+1, total_epochs)
                 log += '[Iter: {}/{}]'.format(iter_i, epoch_size)
                 log += '[lr: {:.6f}]'.format(tmp_lr)
                 # loss infor
