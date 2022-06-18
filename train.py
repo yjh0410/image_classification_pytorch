@@ -290,29 +290,30 @@ def main():
                 t0 = time.time()
 
         # evaluate
-        print('evaluating ...')
-        model_eval = ema.ema if args.ema else model_without_ddp
-        loss, acc1 = validate(
-            device=device,
-            val_loader=val_loader,
-            model=model_eval,
-            criterion=criterion
-            )
-        print('On val dataset: [loss: %.2f][acc1: %.2f]' 
-                % (loss.item(), 
-                   acc1[0].item()),
-                flush=True)
+        if distributed_utils.is_main_process():
+            print('evaluating ...')
+            model_eval = ema.ema if args.ema else model_without_ddp
+            loss, acc1 = validate(
+                device=device,
+                val_loader=val_loader,
+                model=model_eval,
+                criterion=criterion
+                )
+            print('On val dataset: [loss: %.2f][acc1: %.2f]' 
+                    % (loss.item(), 
+                    acc1[0].item()),
+                    flush=True)
 
-        is_best = acc1 > best_acc1
-        best_acc1 = max(acc1, best_acc1)
-        if is_best:
-            print('saving the model ...')
-            checkpoint_path = os.path.join(path_to_save, 'best_model.pth')
-            torch.save({'model': model_eval.state_dict(),
-                        'optimizer': optimizer.state_dict(),
-                        'epoch': epoch,
-                        'args': args}, 
-                        checkpoint_path)                      
+            is_best = acc1 > best_acc1
+            best_acc1 = max(acc1, best_acc1)
+            if is_best:
+                print('saving the model ...')
+                checkpoint_path = os.path.join(path_to_save, 'best_model.pth')
+                torch.save({'model': model_eval.state_dict(),
+                            'optimizer': optimizer.state_dict(),
+                            'epoch': epoch,
+                            'args': args}, 
+                            checkpoint_path)                      
             
 
 def validate(device, val_loader, model, criterion):
