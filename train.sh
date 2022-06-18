@@ -8,5 +8,6 @@ python train.py --cuda \
                 --optimizer adamw \
                 --base_lr 4e-3 \
                 --min_lr 1e-6 \
-                -accu 32
+                -accu 32 \
+                --ema
 
