@@ -6,10 +6,16 @@ import argparse
 
 import torch
 import torch.optim as optim
+import torch.backends.cudnn as cudnn
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+
 import torchvision
 from torchvision import transforms as tf
 
+
 from models import build_model
+from utils import distributed_utils
 from utils.misc import ModelEMA, accuracy
 from utils.com_flops_params import FLOPs_and_Params
 
@@ -21,23 +27,33 @@ def parse_args():
                         help='use cuda')
     parser.add_argument('--batch_size', type=int,
                         default=256, help='batch size')
-    parser.add_argument('--wp_epoch', type=int, default=5, 
+    parser.add_argument('--wp_epoch', type=int, default=20, 
                         help='warmup epoch')
     parser.add_argument('--max_epoch', type=int, default=300, 
                         help='max epoch')
     parser.add_argument('--num_workers', type=int, default=4,
                         help='number of workers')
     parser.add_argument('--base_lr', type=float,
-                        default=0.1, help='learning rate for training model')
-    parser.add_argument('--min_lr_ratio', type=float,
-                        default=0.05, help='the final lr')
+                        default=4e-3, help='learning rate for training model')
+    parser.add_argument('--min_lr', type=float,
+                        default=1e-6, help='the final lr')
     parser.add_argument('--path_to_save', type=str, 
                         default='weights/')
     parser.add_argument('--tfboard', action='store_true', default=False,
                         help='use tensorboard')
-    parser.add_argument('--optimizer', type=str, default='adamw',
+    # optimization
+    parser.add_argument('-opt', '--optimizer', type=str, default='adamw',
                         help='sgd, adam')
+    parser.add_argument('-wd', '--weight_decay', type=float, default=0.05,
+                        help='weight decay')
+    parser.add_argument('-mn', '--momentum', type=float, default=0.9,
+                        help='momentum for SGD')
+    parser.add_argument('-accu', '--accumulation', type=int, default=1,
+                        help='gradient accumulation')
+
     parser.add_argument('--ema', action='store_true', default=False,
+                        help='use ema.')
+    parser.add_argument('-dist', '--distribute', action='store_true', default=False,
                         help='use ema.')
     # Model
     parser.add_argument('-m', '--model', type=str, default='resnet18',
@@ -55,6 +71,15 @@ def parse_args():
     parser.add_argument('--num_classes', type=int, default=16,
                         help='number of classes')
 
+    # DDP train
+    parser.add_argument('-dist', '--distributed', action='store_true', default=False,
+                        help='distributed training')
+    parser.add_argument('--dist_url', default='env://', 
+                        help='url used to set up distributed training')
+    parser.add_argument('--world_size', default=1, type=int,
+                        help='number of distributed processes')
+    parser.add_argument('--sybn', action='store_true', default=False, 
+                        help='use sybn.')
 
     return parser.parse_args()
 
@@ -62,12 +87,20 @@ def parse_args():
 def main():
     args = parse_args()
 
+    # dist
+    print('World size: {}'.format(distributed_utils.get_world_size()))
+    if args.distributed:
+        distributed_utils.init_distributed_mode(args)
+        print("git:\n  {}\n".format(distributed_utils.get_sha()))
+
+
     path_to_save = os.path.join(args.path_to_save)
     os.makedirs(path_to_save, exist_ok=True)
     
     # use gpu
     if args.cuda:
         print("use cuda")
+        cudnn.benchmark = True
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
@@ -100,12 +133,7 @@ def main():
                             tf.ToTensor(),
                             tf.Normalize(pixel_mean,
                                          pixel_std)]))
-    train_loader = torch.utils.data.DataLoader(
-                        dataset=train_dataset, 
-                        batch_size=args.batch_size, 
-                        shuffle=True,
-                        num_workers=args.num_workers, 
-                        pin_memory=True)
+    train_loader = build_dataloader(args, train_dataset)
     ## val dataset
     val_dataset = torchvision.datasets.ImageFolder(
                         root=val_data_root, 
@@ -121,7 +149,7 @@ def main():
                         shuffle=False,
                         num_workers=args.num_workers, 
                         pin_memory=True)
-    
+
     print('========================')
     print('Train data length : ', len(train_dataset))
     print('Val data length : ', len(val_dataset))
@@ -132,18 +160,31 @@ def main():
                         norm_type=args.norm_type,
                         num_classes=args.num_classes)
     model.train().to(device)
+
+    # DDP
+    model_without_ddp = model
+    if args.distributed:
+        model = DDP(model, device_ids=[args.gpu])
+        model_without_ddp = model.module
+
     ema = ModelEMA(model) if args.ema else None
 
     # FLOPs * Params
-    model_copy = deepcopy(model)
-    model_copy.eval()
-    FLOPs_and_Params(model=model, size=224)
-    model_copy.train()
+    if distributed_utils.is_main_process:
+        model_copy = deepcopy(model_without_ddp)
+        model_copy.eval()
+        FLOPs_and_Params(model=model, size=224)
+        model_copy.train()
+
+    if args.distributed:
+        # wait for all processes to synchronize
+        dist.barrier()
+
 
     # basic config
     best_acc1 = -1.
     base_lr = args.base_lr
-    min_lr = base_lr * args.min_lr_ratio
+    min_lr = args.min_lr
     tmp_lr = base_lr
     epoch_size = len(train_loader)
     wp_iter = len(train_loader) * args.wp_epoch
@@ -153,13 +194,17 @@ def main():
 
     # optimizer
     if args.optimizer == 'adamw':
-        optimizer = optim.AdamW(model.parameters(), 
-                                lr=base_lr,
-                                weight_decay=1e-4)
+        optimizer = optim.AdamW(
+            model_without_ddp.parameters(), 
+            lr=base_lr,
+            weight_decay=1e-4
+            )
     elif args.optimizer == 'sgd':
-        optimizer = optim.SGD(model.parameters(), 
-                                lr=base_lr,
-                                weight_decay=1e-4)
+        optimizer = optim.SGD(
+            model_without_ddp.parameters(),
+            lr=base_lr,
+            weight_decay=1e-4
+            )
 
     # loss
     criterion = torch.nn.CrossEntropyLoss().to(device)
@@ -185,12 +230,12 @@ def main():
             ni = iter_i + epoch * epoch_size
 
             # warmup
-            if ni < wp_iter:
+            if ni < wp_iter and warmup:
                 alpha = ni / wp_iter
                 warmup_factor = 0.00066667 * (1 - alpha) + alpha
                 tmp_lr = base_lr * warmup_factor
                 set_lr(optimizer, tmp_lr)
-            elif ni == wp_iter:
+            elif ni >= wp_iter and warmup:
                 print('Warmup is Over !!!')
                 warmup = False
                 set_lr(optimizer, base_lr)
@@ -211,13 +256,16 @@ def main():
             acc = accuracy(output, target, topk=(1, 5,))            
 
             # bp
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            loss /= args.accumulation
+            loss.backward() 
 
-            # ema
-            if args.ema:
-                ema.update(model)
+            if ni % args.accumulation == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+                # ema
+                if args.ema:
+                    ema.update(model)
+
 
             if iter_i % 10 == 0:
                 if args.tfboard:
@@ -245,7 +293,13 @@ def main():
 
         # evaluate
         print('evaluating ...')
-        loss, acc1 = validate(device, val_loader, model, criterion)
+        model_eval = ema.ema if args.ema else model_without_ddp
+        loss, acc1 = validate(
+            device=device,
+            val_loader=val_loader,
+            model=model_eval,
+            criterion=criterion
+            )
         print('On val dataset: [loss: %.2f][acc1: %.2f]' 
                 % (loss.item(), 
                    acc1[0].item()),
@@ -256,7 +310,7 @@ def main():
         if is_best:
             print('saving the model ...')
             checkpoint_path = os.path.join(path_to_save, 'best_model.pth')
-            torch.save({'model': model.state_dict(),
+            torch.save({'model': model_eval.state_dict(),
                         'optimizer': optimizer.state_dict(),
                         'epoch': epoch,
                         'args': args}, 
@@ -301,6 +355,26 @@ def validate(device, val_loader, model, criterion):
 def set_lr(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
+
+def build_dataloader(args, dataset):
+    # distributed
+    if args.distributed:
+        sampler = torch.utils.data.distributed.DistributedSampler(dataset)
+    else:
+        sampler = torch.utils.data.RandomSampler(dataset)
+
+    batch_sampler_train = torch.utils.data.BatchSampler(sampler, 
+                                                        args.batch_size, 
+                                                        drop_last=True)
+
+    dataloader = torch.utils.data.DataLoader(dataset, 
+                                             batch_sampler=batch_sampler_train,
+                                             num_workers=args.num_workers,
+                                             pin_memory=True)
+    
+    return dataloader
+    
 
 
 if __name__ == "__main__":
