@@ -360,7 +360,7 @@ def validate(device, val_loader, model, criterion):
             count += bs
             acc1_num_pos += cur_acc1[0] * bs
         
-        # top1 acc & top5 acc
+        # top1 acc
         acc1 = acc1_num_pos / count
 
     # switch to train mode
