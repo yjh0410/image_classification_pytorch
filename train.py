@@ -342,7 +342,7 @@ def validate(device, val_loader, model, criterion):
     with torch.no_grad():
         for i, (images, target) in enumerate(val_loader):
             if i % 100 == 0:
-                print("[%d]/[%d] ...".format(i, len(val_loader)))
+                print("[%d]/[%d] ..." % (i, len(val_loader)))
             images = images.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
 
