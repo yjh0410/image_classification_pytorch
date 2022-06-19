@@ -184,7 +184,6 @@ def main():
         # wait for all processes to synchronize
         dist.barrier()
 
-
     # basic config
     best_acc1 = -1.
     base_lr = args.base_lr
