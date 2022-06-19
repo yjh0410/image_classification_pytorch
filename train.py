@@ -68,7 +68,7 @@ def parse_args():
                         help='path to dataset')
 
     # model config
-    parser.add_argument('--num_classes', type=int, default=16,
+    parser.add_argument('--num_classes', type=int, default=1000,
                         help='number of classes')
 
     # DDP train

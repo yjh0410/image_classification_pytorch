@@ -6,14 +6,12 @@ from .cspdarknet import build_cspd
 
 def build_model(model_name='resnet18',
                 pretrained=False,
-                norm_type='BN',
-                num_classes=2,
+                num_classes=1000,
                 resume=None):
     if 'resnet' in model_name:
         model = build_resnet(
             model_name=model_name,
             pretrained=pretrained,
-            norm_type=norm_type,
             num_classes=num_classes
             )
 

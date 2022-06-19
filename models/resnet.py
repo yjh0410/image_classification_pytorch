@@ -26,44 +26,6 @@ model_urls = {
 }
 
 
-class FrozenBatchNorm2d(torch.nn.Module):
-    """
-    BatchNorm2d where the batch statistics and the affine parameters are fixed.
-    Copy-paste from torchvision.misc.ops with added eps before rqsrt,
-    without which any other models than torchvision.models.resnet[18,34,50,101]
-    produce nans.
-    """
-
-    def __init__(self, n):
-        super(FrozenBatchNorm2d, self).__init__()
-        self.register_buffer("weight", torch.ones(n))
-        self.register_buffer("bias", torch.zeros(n))
-        self.register_buffer("running_mean", torch.zeros(n))
-        self.register_buffer("running_var", torch.ones(n))
-
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                              missing_keys, unexpected_keys, error_msgs):
-        num_batches_tracked_key = prefix + 'num_batches_tracked'
-        if num_batches_tracked_key in state_dict:
-            del state_dict[num_batches_tracked_key]
-
-        super(FrozenBatchNorm2d, self)._load_from_state_dict(
-            state_dict, prefix, local_metadata, strict,
-            missing_keys, unexpected_keys, error_msgs)
-
-    def forward(self, x):
-        # move reshapes to the beginning
-        # to make it fuser-friendly
-        w = self.weight.reshape(1, -1, 1, 1)
-        b = self.bias.reshape(1, -1, 1, 1)
-        rv = self.running_var.reshape(1, -1, 1, 1)
-        rm = self.running_mean.reshape(1, -1, 1, 1)
-        eps = 1e-5
-        scale = w * (rv + eps).rsqrt()
-        bias = b - rm * scale
-        return x * scale + bias
-
-
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -452,33 +414,29 @@ def wide_resnet101_2(pretrained: bool = False, progress: bool = True, **kwargs: 
                    pretrained, progress, **kwargs)
 
 
-def build_resnet(model_name='resnet18', pretrained=False, num_classes=2, norm_type='BN'):
-    if norm_type == 'BN':
-        norm_layer = nn.BatchNorm2d
-    elif norm_type == 'FrozeBN':
-        norm_layer = FrozenBatchNorm2d
+def build_resnet(model_name='resnet18', pretrained=False, num_classes=1000):
     
     if model_name == 'resnet18':
-        model = resnet18(pretrained=pretrained, norm_layer=norm_layer, num_classes=num_classes)
+        model = resnet18(pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'resnet34':
-        model = resnet34(pretrained=pretrained, norm_layer=norm_layer, num_classes=num_classes)
+        model = resnet34(pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'resnet50':
-        model = resnet50(pretrained=pretrained, norm_layer=norm_layer, num_classes=num_classes)
+        model = resnet50(pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'resnet101':
-        model = resnet101(pretrained=pretrained, norm_layer=norm_layer, num_classes=num_classes)
+        model = resnet101(pretrained=pretrained, num_classes=num_classes)
 
     elif model_name == 'resnet152':
-        model = resnet152(pretrained=pretrained, norm_layer=norm_layer, num_classes=num_classes)
+        model = resnet152(pretrained=pretrained, num_classes=num_classes)
     
 
     return model
 
 
 if __name__ == "__main__":
-    model = build_resnet(pretrained=True, norm_type='FrozeBN', num_classes=2)
+    model = build_resnet(pretrained=True, num_classes=1000)
 
     x = torch.randn(2, 3, 64, 64)
     y = model(x)

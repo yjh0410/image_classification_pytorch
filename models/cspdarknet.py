@@ -122,7 +122,10 @@ class CSPDarkNet(nn.Module):
 
 
 def build_cspd(model_name='cspd-l', pretrained=False):
-    if model_name == 'cspd-s':
+    if model_name == 'cspd-t':
+        return cspdarknet_t(pretrained)
+
+    elif model_name == 'cspd-s':
         return cspdarknet_s(pretrained)
 
     elif model_name == 'cspd-m':
@@ -133,6 +136,36 @@ def build_cspd(model_name='cspd-l', pretrained=False):
 
     elif model_name == 'cspd-x':
         return cspdarknet_m(pretrained)
+
+
+def cspdarknet_t(pretrained=False, width=0.25, depth=0.34):
+    # model
+    model = CSPDarkNet(width=width, depth=depth)
+
+    # load weight
+    if pretrained:
+        print('Loading pretrained weight ...')
+        url = model_urls['cspd-t']
+        checkpoint = torch.hub.load_state_dict_from_url(
+            url=url, map_location="cpu", check_hash=True)
+        # checkpoint state dict
+        checkpoint_state_dict = checkpoint.pop("model")
+        # model state dict
+        model_state_dict = model.state_dict()
+        # check
+        for k in list(checkpoint_state_dict.keys()):
+            if k in model_state_dict:
+                shape_model = tuple(model_state_dict[k].shape)
+                shape_checkpoint = tuple(checkpoint_state_dict[k].shape)
+                if shape_model != shape_checkpoint:
+                    checkpoint_state_dict.pop(k)
+            else:
+                checkpoint_state_dict.pop(k)
+                print(k)
+
+        model.load_state_dict(checkpoint_state_dict)
+
+    return model
 
 
 def cspdarknet_s(pretrained=False, width=0.5, depth=0.34):
