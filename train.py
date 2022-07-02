@@ -4,13 +4,12 @@ import time
 import math
 import argparse
 
-from timm.data import create_transform
-from timm.utils import model_ema
 import torch
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.cuda.amp as amp
 
 import torchvision
 from torchvision import transforms as tf
@@ -43,6 +42,9 @@ def parse_args():
                         default='weights/')
     parser.add_argument('--tfboard', action='store_true', default=False,
                         help='use tensorboard')
+    parser.add_argument('--fp16', dest="fp16", action="store_true", default=False,
+                        help="Adopting mix precision training.")
+
     # optimization
     parser.add_argument('-opt', '--optimizer', type=str, default='adamw',
                         help='sgd, adam')
@@ -96,16 +98,18 @@ def main():
     args = parse_args()
     print(args)
 
+    path_to_save = os.path.join(args.path_to_save, args.model)
+    os.makedirs(path_to_save, exist_ok=True)
+    
     # dist
     print('World size: {}'.format(distributed_utils.get_world_size()))
     if args.distributed:
         distributed_utils.init_distributed_mode(args)
         print("git:\n  {}\n".format(distributed_utils.get_sha()))
 
+    # amp
+    scaler = amp.GradScaler(enabled=args.fp16)
 
-    path_to_save = os.path.join(args.path_to_save, args.model)
-    os.makedirs(path_to_save, exist_ok=True)
-    
     # use gpu
     if args.cuda:
         print("use cuda")
@@ -269,7 +273,11 @@ def main():
             target = target.to(device, non_blocking=True)
 
             # inference
-            output = model(images)
+            if args.fp16:
+                with torch.cuda.amp.autocast(enabled=args.fp16):
+                    output = model(images)
+            else:
+                output = model(images)
 
             # loss
             loss = criterion(output, target)
@@ -281,15 +289,28 @@ def main():
             acc = accuracy(output, target, topk=(1, 5,))            
 
             # bp
-            loss /= args.accumulation
-            loss.backward() 
+            if args.fp16:
+                # Backward and Optimize
+                scaler.scale(loss / args.accumulation).backward()
 
-            if ni % args.accumulation == 0:
-                optimizer.step()
-                optimizer.zero_grad()
+                # Optimize
+                if ni % args.accumulation == 0:
+                    scaler.step(optimizer)
+                    scaler.update()
+                    optimizer.zero_grad()
                 # ema
                 if args.ema:
                     ema.update(model)
+            else:
+                loss /= args.accumulation
+                loss.backward() 
+
+                if ni % args.accumulation == 0:
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    # ema
+                    if args.ema:
+                        ema.update(model)
 
 
             if iter_i % 10 == 0:
