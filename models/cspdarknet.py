@@ -162,6 +162,36 @@ def build_cspd(model_name='cspd-l', pretrained=False):
         return cspdarknet_x(pretrained)
 
 
+def cspdarknet_n(pretrained=False, width=0.25, depth=0.34):
+    # model
+    model = CSPDarkNet(width=width, depth=depth, depthwise=True)
+
+    # load weight
+    if pretrained:
+        print('Loading pretrained weight ...')
+        url = model_urls['cspd-n']
+        checkpoint = torch.hub.load_state_dict_from_url(
+            url=url, map_location="cpu", check_hash=True)
+        # checkpoint state dict
+        checkpoint_state_dict = checkpoint.pop("model")
+        # model state dict
+        model_state_dict = model.state_dict()
+        # check
+        for k in list(checkpoint_state_dict.keys()):
+            if k in model_state_dict:
+                shape_model = tuple(model_state_dict[k].shape)
+                shape_checkpoint = tuple(checkpoint_state_dict[k].shape)
+                if shape_model != shape_checkpoint:
+                    checkpoint_state_dict.pop(k)
+            else:
+                checkpoint_state_dict.pop(k)
+                print(k)
+
+        model.load_state_dict(checkpoint_state_dict)
+
+    return model
+
+
 def cspdarknet_t(pretrained=False, width=0.25, depth=0.34):
     # model
     model = CSPDarkNet(width=width, depth=depth)
