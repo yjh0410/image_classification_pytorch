@@ -23,15 +23,14 @@ class Conv(nn.Module):
         super(Conv, self).__init__()
         convs = []
         if depthwise:
-            assert c1 == c2, "In depthwise conv, the in_dim (c1) should be equal to out_dim (c2)."
             # depthwise conv
-            convs.append(nn.Conv2d(c1, c2, kernel_size=k, stride=s, padding=p, dilation=d, groups=c1, bias=False))
-            convs.append(nn.BatchNorm2d(c2))
+            convs.append(nn.Conv2d(c1, c1, kernel_size=k, stride=s, padding=p, dilation=d, groups=c1, bias=False))
+            convs.append(nn.BatchNorm2d(c1))
             if act:
                 convs.append(nn.SiLU(inplace=True))
 
             # pointwise conv
-            convs.append(nn.Conv2d(c2, c2, kernel_size=1, stride=s, padding=0, dilation=d, groups=1, bias=False))
+            convs.append(nn.Conv2d(c1, c2, kernel_size=1, stride=s, padding=0, dilation=d, groups=1, bias=False))
             convs.append(nn.BatchNorm2d(c2))
             if act:
                 convs.append(nn.SiLU(inplace=True))
