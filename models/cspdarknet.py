@@ -9,20 +9,41 @@ model_urls = {
 }
 
 
+# Basic conv layer
 class Conv(nn.Module):
-    def __init__(self, c1, c2, k, s=1, p=0, d=1, g=1, act=True):
+    def __init__(self, 
+                 c1,                   # in channels
+                 c2,                   # out channels 
+                 k=1,                  # kernel size 
+                 p=0,                  # padding
+                 s=1,                  # padding
+                 d=1,                  # dilation
+                 act=True,             # activation
+                 depthwise=False):
         super(Conv, self).__init__()
-        if act:
-            self.convs = nn.Sequential(
-                nn.Conv2d(c1, c2, k, stride=s, padding=p, dilation=d, groups=g, bias=False),
-                nn.BatchNorm2d(c2),
-                nn.SiLU(inplace=True)
-            )
+        convs = []
+        if depthwise:
+            assert c1 == c2, "In depthwise conv, the in_dim (c1) should be equal to out_dim (c2)."
+            # depthwise conv
+            convs.append(nn.Conv2d(c1, c2, kernel_size=k, stride=s, padding=p, dilation=d, groups=c1, bias=False))
+            convs.append(nn.BatchNorm2d(c2))
+            if act:
+                convs.append(nn.SiLU(inplace=True))
+
+            # pointwise conv
+            convs.append(nn.Conv2d(c2, c2, kernel_size=1, stride=s, padding=0, dilation=d, groups=1, bias=False))
+            convs.append(nn.BatchNorm2d(c2))
+            if act:
+                convs.append(nn.SiLU(inplace=True))
+
         else:
-            self.convs = nn.Sequential(
-                nn.Conv2d(c1, c2, k, stride=s, padding=p, dilation=d, groups=g, bias=False),
-                nn.BatchNorm2d(c2)
-            )
+            convs.append(nn.Conv2d(c1, c2, kernel_size=k, stride=s, padding=p, dilation=d, groups=1, bias=False))
+            convs.append(nn.BatchNorm2d(c2))
+            if act:
+                convs.append(nn.SiLU(inplace=True))
+            
+        self.convs = nn.Sequential(*convs)
+
 
     def forward(self, x):
         return self.convs(x)
@@ -32,10 +53,10 @@ class ResidualBlock(nn.Module):
     """
     basic residual block for CSP-Darknet
     """
-    def __init__(self, in_ch):
+    def __init__(self, in_ch, depthwise=False):
         super(ResidualBlock, self).__init__()
-        self.conv1 = Conv(in_ch, in_ch, k=1)
-        self.conv2 = Conv(in_ch, in_ch, k=3, p=1, act=False)
+        self.conv1 = Conv(in_ch, in_ch, k=1, depthwise=depthwise)
+        self.conv2 = Conv(in_ch, in_ch, k=3, p=1, depthwise=depthwise)
 
     def forward(self, x):
         h = self.conv2(self.conv1(x))
@@ -45,12 +66,15 @@ class ResidualBlock(nn.Module):
 
 
 class CSPStage(nn.Module):
-    def __init__(self, c1, n=1):
+    def __init__(self, c1, n=1, depthwise=False):
         super(CSPStage, self).__init__()
         c_ = c1 // 2  # hidden channels
         self.cv1 = Conv(c1, c_, k=1)
         self.cv2 = Conv(c1, c_, k=1)
-        self.res_blocks = nn.Sequential(*[ResidualBlock(in_ch=c_) for _ in range(n)])
+        self.res_blocks = nn.Sequential(*[
+            ResidualBlock(in_ch=c_, depthwise=depthwise)
+            for _ in range(n)
+            ])
         self.cv3 = Conv(2 * c_, c1, k=1)
 
     def forward(self, x):
@@ -65,7 +89,7 @@ class CSPDarkNet(nn.Module):
     """
     CSPDarknet_53.
     """
-    def __init__(self, width=1.0, depth=1.0, num_classes=1000):
+    def __init__(self, width=1.0, depth=1.0, depthwise=False, num_classes=1000):
         super(CSPDarkNet, self).__init__()
         # init w&d cfg
         basic_w_cfg = [32, 64, 128, 256, 512, 1024]
@@ -80,25 +104,25 @@ class CSPDarkNet(nn.Module):
         print('=================================')
 
         self.layer_1 = nn.Sequential(
-            Conv(3, w_cfg[0], k=3, p=1),      
-            Conv(w_cfg[0], w_cfg[1], k=3, p=1, s=2),
-            CSPStage(c1=w_cfg[1], n=d_cfg[0])                       # p1/2
+            Conv(3, w_cfg[0], k=3, p=1, depthwise=depthwise),      
+            Conv(w_cfg[0], w_cfg[1], k=3, p=1, s=2, depthwise=depthwise),
+            CSPStage(c1=w_cfg[1], n=d_cfg[0], depthwise=depthwise)                       # p1/2
         )
         self.layer_2 = nn.Sequential(   
-            Conv(w_cfg[1], w_cfg[2], k=3, p=1, s=2),             
-            CSPStage(c1=w_cfg[2], n=d_cfg[1])                      # P2/4
+            Conv(w_cfg[1], w_cfg[2], k=3, p=1, s=2, depthwise=depthwise),             
+            CSPStage(c1=w_cfg[2], n=d_cfg[1], depthwise=depthwise)                      # P2/4
         )
         self.layer_3 = nn.Sequential(
-            Conv(w_cfg[2], w_cfg[3], k=3, p=1, s=2),             
-            CSPStage(c1=w_cfg[3], n=d_cfg[2])                      # P3/8
+            Conv(w_cfg[2], w_cfg[3], k=3, p=1, s=2, depthwise=depthwise),             
+            CSPStage(c1=w_cfg[3], n=d_cfg[2], depthwise=depthwise)                      # P3/8
         )
         self.layer_4 = nn.Sequential(
-            Conv(w_cfg[3], w_cfg[4], k=3, p=1, s=2),             
-            CSPStage(c1=w_cfg[4], n=d_cfg[3])                      # P4/16
+            Conv(w_cfg[3], w_cfg[4], k=3, p=1, s=2, depthwise=depthwise),             
+            CSPStage(c1=w_cfg[4], n=d_cfg[3], depthwise=depthwise)                      # P4/16
         )
         self.layer_5 = nn.Sequential(
-            Conv(w_cfg[4], w_cfg[5], k=3, p=1, s=2),             
-            CSPStage(c1=w_cfg[5], n=d_cfg[4])                     # P5/32
+            Conv(w_cfg[4], w_cfg[5], k=3, p=1, s=2, depthwise=depthwise),             
+            CSPStage(c1=w_cfg[5], n=d_cfg[4], depthwise=depthwise)                     # P5/32
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -132,10 +156,10 @@ def build_cspd(model_name='cspd-l', pretrained=False):
         return cspdarknet_m(pretrained)
 
     elif model_name == 'cspd-l':
-        return cspdarknet_m(pretrained)
+        return cspdarknet_l(pretrained)
 
     elif model_name == 'cspd-x':
-        return cspdarknet_m(pretrained)
+        return cspdarknet_x(pretrained)
 
 
 def cspdarknet_t(pretrained=False, width=0.25, depth=0.34):
