@@ -233,7 +233,7 @@ def main():
         print('use EMA ...')
         ema = ModelEMA(model, start_epoch*epoch_size)
     else:
-        None
+        ema = None
 
     # loss
     criterion = torch.nn.CrossEntropyLoss().to(device)
@@ -298,9 +298,6 @@ def main():
                     scaler.step(optimizer)
                     scaler.update()
                     optimizer.zero_grad()
-                # ema
-                if args.ema:
-                    ema.update(model)
             else:
                 loss /= args.accumulation
                 loss.backward() 
@@ -308,9 +305,10 @@ def main():
                 if ni % args.accumulation == 0:
                     optimizer.step()
                     optimizer.zero_grad()
-                    # ema
-                    if args.ema:
-                        ema.update(model)
+                    
+            # ema
+            if args.ema:
+                ema.update(model)
 
 
             if iter_i % 10 == 0:
