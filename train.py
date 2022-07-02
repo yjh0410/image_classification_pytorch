@@ -4,6 +4,8 @@ import time
 import math
 import argparse
 
+from timm.data import create_transform
+from timm.utils import model_ema
 import torch
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
@@ -51,8 +53,12 @@ def parse_args():
     parser.add_argument('-accu', '--accumulation', type=int, default=1,
                         help='gradient accumulation')
 
-    parser.add_argument('--ema', action='store_true', default=False,
-                        help='use ema.')
+    # augmentation
+    parser.add_argument('--color_jitter', type=float, default=0.4,
+                        help='color jitter')
+    parser.add_argument('--hflip', type=float, default=0.5,
+                        help='random hflip')
+
     # Model
     parser.add_argument('-m', '--model', type=str, default='resnet18',
                         help='resnet18, resnet34, ...')
@@ -62,6 +68,8 @@ def parse_args():
                         help='normalization layer.')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='keep training')
+    parser.add_argument('--ema', action='store_true', default=False,
+                        help='use ema.')
 
     # dataset
     parser.add_argument('-root', '--data_path', type=str, default='/mnt/share/ssd2/dataset',
@@ -106,10 +114,6 @@ def main():
     else:
         device = torch.device("cpu")
 
-    # EMA
-    if args.ema:
-        print('use EMA ...')
-
     # tensorboard
     if args.tfboard:
         print('use tensorboard')
@@ -125,12 +129,14 @@ def main():
     pixel_std = [0.229, 0.224, 0.225]
     train_data_root = os.path.join(args.data_path, 'train')
     val_data_root = os.path.join(args.data_path, 'val')
+    color_jitter = (float(args.color_jitter),) * 3
     ## train dataset
     train_dataset = torchvision.datasets.ImageFolder(
                         root=train_data_root,
                         transform=tf.Compose([
                             tf.RandomResizedCrop(224),
-                            tf.RandomHorizontalFlip(),
+                            tf.RandomHorizontalFlip(args.hflip),
+                            tf.ColorJitter(*color_jitter),
                             tf.ToTensor(),
                             tf.Normalize(pixel_mean,
                                          pixel_std)]))
@@ -170,8 +176,6 @@ def main():
     if args.distributed:
         model = DDP(model, device_ids=[args.gpu])
         model_without_ddp = model.module
-
-    ema = ModelEMA(model) if args.ema else None
 
     # FLOPs * Params
     if distributed_utils.is_main_process:
@@ -219,7 +223,14 @@ def main():
         # checkpoint state dict
         checkpoint_state_dict = checkpoint.pop("optimizer")
         optimizer.load_state_dict(checkpoint_state_dict)
-        start_epoch = checkpoint.pop("epoch")
+        start_epoch = checkpoint.pop("epoch") + 1
+
+    # EMA
+    if args.ema:
+        print('use EMA ...')
+        ema = ModelEMA(model, start_epoch*epoch_size)
+    else:
+        None
 
     # loss
     criterion = torch.nn.CrossEntropyLoss().to(device)
@@ -325,7 +336,7 @@ def main():
             best_acc1 = max(acc1, best_acc1)
             if is_best:
                 print('saving the model ...')
-                weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch + 1, acc1[0].item())
+                weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch, acc1[0].item())
                 checkpoint_path = os.path.join(path_to_save, weight_name)
                 torch.save({'model': model_eval.state_dict(),
                             'optimizer': optimizer.state_dict(),
