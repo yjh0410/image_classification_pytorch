@@ -291,7 +291,8 @@ def main():
             # bp
             if args.fp16:
                 # Backward and Optimize
-                scaler.scale(loss / args.accumulation).backward()
+                loss = loss / args.accumulation
+                scaler.scale(loss).backward()
 
                 # Optimize
                 if ni % args.accumulation == 0:
