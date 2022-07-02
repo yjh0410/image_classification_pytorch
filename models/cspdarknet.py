@@ -146,7 +146,10 @@ class CSPDarkNet(nn.Module):
 
 
 def build_cspd(model_name='cspd-l', pretrained=False):
-    if model_name == 'cspd-t':
+    if model_name == 'cspd-n':
+        return cspdarknet_n(pretrained)
+
+    elif model_name == 'cspd-t':
         return cspdarknet_t(pretrained)
 
     elif model_name == 'cspd-s':
