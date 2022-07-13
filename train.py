@@ -56,8 +56,6 @@ def parse_args():
                         help='gradient accumulation')
 
     # augmentation
-    parser.add_argument('--color_jitter', type=float, default=0.4,
-                        help='color jitter')
     parser.add_argument('--hflip', type=float, default=0.5,
                         help='random hflip')
 
@@ -133,14 +131,12 @@ def main():
     pixel_std = [0.229, 0.224, 0.225]
     train_data_root = os.path.join(args.data_path, 'train')
     val_data_root = os.path.join(args.data_path, 'val')
-    color_jitter = (float(args.color_jitter),) * 3
     ## train dataset
     train_dataset = torchvision.datasets.ImageFolder(
                         root=train_data_root,
                         transform=tf.Compose([
                             tf.RandomResizedCrop(224),
                             tf.RandomHorizontalFlip(args.hflip),
-                            tf.ColorJitter(*color_jitter),
                             tf.ToTensor(),
                             tf.Normalize(pixel_mean,
                                          pixel_std)]))
