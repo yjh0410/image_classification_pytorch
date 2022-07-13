@@ -10,6 +10,6 @@ python train.py --cuda \
                 --min_lr 1e-6 \
                 -accu 32 \
                 --ema \
-                --fp16 \
+                # --fp16 \
                 # --resume weights/cspd-s/cspd-s_epoch_41_67.70.pth
 
