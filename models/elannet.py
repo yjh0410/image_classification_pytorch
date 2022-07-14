@@ -168,7 +168,7 @@ class ELANNet(nn.Module):
         return x
 
 
-def elannet(pretrained=False):
+def build_elannet(pretrained=False):
     # model
     model = ELANNet()
 
@@ -200,7 +200,7 @@ def elannet(pretrained=False):
 
 if __name__ == '__main__':
     import time
-    net = elannet()
+    net = build_elannet()
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = net(x)

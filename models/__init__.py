@@ -2,6 +2,7 @@ import torch
 
 from .resnet import build_resnet
 from .cspdarknet import build_cspd
+from .elannet import build_elannet
 
 
 def build_model(model_name='resnet18',
@@ -18,6 +19,11 @@ def build_model(model_name='resnet18',
     elif 'cspd' in model_name:
         model = build_cspd(
             model_name=model_name,
+            pretrained=pretrained
+        )
+
+    elif model_name == 'elannet':
+        model = build_elannet(
             pretrained=pretrained
         )
 
