@@ -4,7 +4,7 @@ python train.py --cuda \
                 -m cspd-l \
                 --wp_epoch 20 \
                 --max_epoch 300 \
-                --batch_size 1 \
+                --batch_size 128 \
                 --optimizer adamw \
                 --base_lr 4e-3 \
                 --min_lr 1e-6 \
