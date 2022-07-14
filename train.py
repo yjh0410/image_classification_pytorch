@@ -180,7 +180,7 @@ def main():
     if distributed_utils.is_main_process:
         model_copy = deepcopy(model_without_ddp)
         model_copy.eval()
-        FLOPs_and_Params(model=model, size=224)
+        FLOPs_and_Params(model=model_copy, size=224)
         model_copy.train()
 
     if args.distributed:
