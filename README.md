@@ -23,9 +23,6 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 
 |    Model     | size | acc@1 | acc@5 | FLOPs | Params |  Weight |
 |--------------|------|-------|-------|-------|--------|---------|
-| CSPDarkNet-T | 224  |       |       |       |        |         |
-| CSPDarkNet-S | 224  |       |       | 0.7 B |  4.7 M |         |
-| CSPDarkNet-M | 224  |       |       |       |        |         |
-| CSPDarkNet-L | 224  |       |       |       |        |         |
-| CSPDarkNet-X | 224  |       |       |       |        |         |
+| CSPDarkNet-L | 224  |       |       | 5.3 B | 33.4 M | [github]() |
+| ELANNet      | 224  |       |       |       |        |         |
 
