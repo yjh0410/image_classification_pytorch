@@ -121,7 +121,7 @@ class DownSample(nn.Module):
 # ELANNet of YOLOv7
 class ELANNet(nn.Module):
     """
-    CSPDarknet_53.
+    ELAN-Net of YOLOv7.
     """
     def __init__(self, depthwise=False, num_classes=1000):
         super(ELANNet, self).__init__()

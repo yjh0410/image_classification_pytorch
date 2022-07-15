@@ -32,6 +32,8 @@ def parse_args():
                         help='warmup epoch')
     parser.add_argument('--max_epoch', type=int, default=300, 
                         help='max epoch')
+    parser.add_argument('--eval_epoch', type=int, default=1, 
+                        help='max epoch')
     parser.add_argument('--num_workers', type=int, default=4,
                         help='number of workers')
     parser.add_argument('--base_lr', type=float,
@@ -333,33 +335,34 @@ def main():
                 t0 = time.time()
 
         # evaluate
-        if distributed_utils.is_main_process():
-            print('evaluating ...')
-            model_eval = ema.ema if args.ema else model_without_ddp
-            loss, acc1 = validate(
-                device=device,
-                val_loader=val_loader,
-                model=model_eval,
-                criterion=criterion
-                )
-            print('On val dataset: [loss: %.2f][acc1: %.2f]' 
-                    % (loss.item(), 
-                    acc1[0].item()),
-                    flush=True)
+        if (epoch % args.eval_epoch) == 0 or (epoch == total_epochs - 1):
+            if distributed_utils.is_main_process():
+                print('evaluating ...')
+                model_eval = ema.ema if args.ema else model_without_ddp
+                loss, acc1 = validate(
+                    device=device,
+                    val_loader=val_loader,
+                    model=model_eval,
+                    criterion=criterion
+                    )
+                print('On val dataset: [loss: %.2f][acc1: %.2f]' 
+                        % (loss.item(), 
+                        acc1[0].item()),
+                        flush=True)
 
-            is_best = acc1 > best_acc1
-            best_acc1 = max(acc1, best_acc1)
-            if is_best:
-                print('saving the model ...')
-                weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch, acc1[0].item())
-                checkpoint_path = os.path.join(path_to_save, weight_name)
-                torch.save({'model': model_eval.state_dict()}, 
-                            checkpoint_path)                      
-                # torch.save({'model': model_eval.state_dict(),
-                #             'optimizer': optimizer.state_dict(),
-                #             'epoch': epoch,
-                #             'args': args}, 
-                #             checkpoint_path)                      
+                is_best = acc1 > best_acc1
+                best_acc1 = max(acc1, best_acc1)
+                if is_best:
+                    print('saving the model ...')
+                    weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch, acc1[0].item())
+                    checkpoint_path = os.path.join(path_to_save, weight_name)
+                    torch.save({'model': model_eval.state_dict()}, 
+                                checkpoint_path)                      
+                    # torch.save({'model': model_eval.state_dict(),
+                    #             'optimizer': optimizer.state_dict(),
+                    #             'epoch': epoch,
+                    #             'args': args}, 
+                    #             checkpoint_path)                      
             
 
 def validate(device, val_loader, model, criterion):
