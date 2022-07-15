@@ -353,11 +353,13 @@ def main():
                 print('saving the model ...')
                 weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch, acc1[0].item())
                 checkpoint_path = os.path.join(path_to_save, weight_name)
-                torch.save({'model': model_eval.state_dict(),
-                            'optimizer': optimizer.state_dict(),
-                            'epoch': epoch,
-                            'args': args}, 
+                torch.save({'model': model_eval.state_dict()}, 
                             checkpoint_path)                      
+                # torch.save({'model': model_eval.state_dict(),
+                #             'optimizer': optimizer.state_dict(),
+                #             'epoch': epoch,
+                #             'args': args}, 
+                #             checkpoint_path)                      
             
 
 def validate(device, val_loader, model, criterion):
