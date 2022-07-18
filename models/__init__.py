@@ -24,7 +24,14 @@ def build_model(model_name='resnet18',
 
     elif model_name == 'elannet':
         model = build_elannet(
-            pretrained=pretrained
+            pretrained=pretrained,
+            model_size='large'
+        )
+
+    elif model_name == 'elannet_tiny':
+        model = build_elannet(
+            pretrained=pretrained,
+            model_size='tiny'
         )
 
     if resume is not None:
