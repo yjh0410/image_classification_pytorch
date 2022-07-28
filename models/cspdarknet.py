@@ -5,7 +5,7 @@ import os
 
 
 model_urls = {
-    "cspd-s": "https://github.com/yjh0410/PyTorch_YOLO-Family/releases/download/yolo-weight/cspdarknet53.pth",
+    "cspd-l": "https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/cspdarknet_l.pth",
 }
 
 
