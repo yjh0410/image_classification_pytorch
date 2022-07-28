@@ -21,8 +21,8 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 # Experiments
 ## ImageNet val
 
-|    Model     | size | acc@1 | acc@5 | FLOPs | Params |  Weight |
-|--------------|------|-------|-------|-------|--------|---------|
-| CSPDarkNet   | 224  |       |       | 5.3 B | 33.4 M | [github]() |
-| ELANNet      | 224  |       |       | 4.1 B | 14.4 M | [github]() |
+|    Model     | size | acc@1 | FLOPs | Params |  Weight |
+|--------------|------|-------|-------|--------|---------|
+| CSPDarkNet-L | 224  |  75.4 | 5.3 B | 33.4 M | [github](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/cspdarknet_l.pth) |
+| ELANNet      | 224  |       | 4.1 B | 14.4 M | [github]() |
 
