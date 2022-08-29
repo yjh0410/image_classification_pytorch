@@ -118,23 +118,6 @@ def main():
     else:
         device = torch.device("cpu")
 
-    # model
-    model = build_model(
-        model_name=args.model,
-        pretrained=args.pretrained, 
-        num_classes=args.num_classes,
-        resume=args.resume
-        )
-    model.train().to(device)
-    # FLOPs * Params
-    if distributed_utils.is_main_process:
-        model_copy = deepcopy(model_without_ddp)
-        model_copy.eval()
-        FLOPs_and_Params(model=model_copy, size=224)
-        model_copy.train()
-
-    exit(0)
-
     # tensorboard
     if args.tfboard:
         print('use tensorboard')
@@ -180,11 +163,27 @@ def main():
     print('Train data length : ', len(train_dataset))
     print('Val data length : ', len(val_dataset))
 
+    # model
+    model = build_model(
+        model_name=args.model,
+        pretrained=args.pretrained, 
+        num_classes=args.num_classes,
+        resume=args.resume
+        )
+    model.train().to(device)
+
     # DDP
     model_without_ddp = model
     if args.distributed:
         model = DDP(model, device_ids=[args.gpu])
         model_without_ddp = model.module
+
+    # FLOPs * Params
+    if distributed_utils.is_main_process:
+        model_copy = deepcopy(model_without_ddp)
+        model_copy.eval()
+        FLOPs_and_Params(model=model_copy, size=224)
+        model_copy.train()
 
     if args.distributed:
         # wait for all processes to synchronize
