@@ -1,8 +1,8 @@
 import torch
 
 from .resnet import build_resnet
-from darknet19 import build_darknet19
-from darknet53 import build_darknet53
+from .darknet19 import build_darknet19
+from .darknet53 import build_darknet53
 from .cspdarknet import build_cspd
 from .elannet import build_elannet
 
