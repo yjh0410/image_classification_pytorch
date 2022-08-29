@@ -25,7 +25,6 @@ class Conv_BN_LeakyReLU(nn.Module):
 
 class DarkNet_19(nn.Module):
     def __init__(self, num_classes=1000):
-        print("Initializing the darknet19 network ......")
         
         super(DarkNet_19, self).__init__()
         # backbone network : DarkNet-19

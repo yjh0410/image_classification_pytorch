@@ -126,6 +126,13 @@ def main():
         resume=args.resume
         )
     model.train().to(device)
+    # FLOPs * Params
+    if distributed_utils.is_main_process:
+        model_copy = deepcopy(model_without_ddp)
+        model_copy.eval()
+        FLOPs_and_Params(model=model_copy, size=224)
+        model_copy.train()
+
     exit(0)
 
     # tensorboard
@@ -178,13 +185,6 @@ def main():
     if args.distributed:
         model = DDP(model, device_ids=[args.gpu])
         model_without_ddp = model.module
-
-    # FLOPs * Params
-    if distributed_utils.is_main_process:
-        model_copy = deepcopy(model_without_ddp)
-        model_copy.eval()
-        FLOPs_and_Params(model=model_copy, size=224)
-        model_copy.train()
 
     if args.distributed:
         # wait for all processes to synchronize
