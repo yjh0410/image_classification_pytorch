@@ -118,6 +118,16 @@ def main():
     else:
         device = torch.device("cpu")
 
+    # model
+    model = build_model(
+        model_name=args.model,
+        pretrained=args.pretrained, 
+        num_classes=args.num_classes,
+        resume=args.resume
+        )
+    model.train().to(device)
+    exit(0)
+
     # tensorboard
     if args.tfboard:
         print('use tensorboard')
@@ -162,15 +172,6 @@ def main():
     print('========================')
     print('Train data length : ', len(train_dataset))
     print('Val data length : ', len(val_dataset))
-
-    # model
-    model = build_model(
-        model_name=args.model,
-        pretrained=args.pretrained, 
-        num_classes=args.num_classes,
-        resume=args.resume
-        )
-    model.train().to(device)
 
     # DDP
     model_without_ddp = model
