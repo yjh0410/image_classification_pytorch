@@ -188,26 +188,26 @@ class ELANNet_Tiny(nn.Module):
         super(ELANNet_Tiny, self).__init__()
         
         # tiny backbone
-        self.layer_1 = Conv(3, 16, k=3, p=1, s=2, act_type='lrelu', depthwise=depthwise)       # P1/2
+        self.layer_1 = Conv(3, 32, k=3, p=1, s=2, act_type='lrelu', depthwise=depthwise)       # P1/2
 
         self.layer_2 = nn.Sequential(   
-            Conv(16, 32, k=3, p=1, s=2, act_type='lrelu', depthwise=depthwise),             
-            ELANBlock(in_dim=32, out_dim=32, expand_ratio=0.5,
+            Conv(32, 64, k=3, p=1, s=2, act_type='lrelu', depthwise=depthwise),             
+            ELANBlock(in_dim=64, out_dim=64, expand_ratio=0.5,
                     model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P2/4
         )
         self.layer_3 = nn.Sequential(
             nn.MaxPool2d((2, 2), 2),             
-            ELANBlock(in_dim=32, out_dim=64, expand_ratio=0.5,
+            ELANBlock(in_dim=64, out_dim=128, expand_ratio=0.5,
                     model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P3/8
         )
         self.layer_4 = nn.Sequential(
             nn.MaxPool2d((2, 2), 2),             
-            ELANBlock(in_dim=64, out_dim=128, expand_ratio=0.5,
+            ELANBlock(in_dim=128, out_dim=256, expand_ratio=0.5,
                     model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P4/16
         )
         self.layer_5 = nn.Sequential(
             nn.MaxPool2d((2, 2), 2),             
-            ELANBlock(in_dim=128, out_dim=256, expand_ratio=0.5,
+            ELANBlock(in_dim=256, out_dim=512, expand_ratio=0.5,
                     model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P5/32
         )
 
