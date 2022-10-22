@@ -179,7 +179,7 @@ class ELANNet(nn.Module):
         return x
 
 
-# ELANNet
+# ELANNet-Tiny
 class ELANNet_Tiny(nn.Module):
     """
     ELAN-Net of YOLOv7-Tiny.
@@ -269,9 +269,7 @@ class ELANNet_Nano(nn.Module):
 
     def forward(self, x):
         x = self.layer_1(x)
-        print(x.shape)
         x = self.layer_2(x)
-        print(x.shape)
         x = self.layer_3(x)
         x = self.layer_4(x)
         x = self.layer_5(x)
