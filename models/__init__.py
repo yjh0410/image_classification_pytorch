@@ -24,16 +24,10 @@ def build_model(model_name='resnet18',
             pretrained=pretrained
         )
 
-    elif model_name == 'elannet':
+    elif model_name in ['elannet', 'elannet_tiny', 'elannet_nano']:
         model = build_elannet(
-            pretrained=pretrained,
-            model_size='large'
-        )
-
-    elif model_name == 'elannet_tiny':
-        model = build_elannet(
-            pretrained=pretrained,
-            model_size='tiny'
+            model_name=model_name,
+            pretrained=pretrained
         )
 
     elif model_name == 'darknet19':
