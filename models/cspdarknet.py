@@ -91,7 +91,7 @@ class CSPDarkNet(nn.Module):
     def __init__(self, width=1.0, depth=1.0, depthwise=False, num_classes=1000):
         super(CSPDarkNet, self).__init__()
         # init w&d cfg
-        basic_w_cfg = [32, 64, 128, 256, 512, 1024]
+        basic_w_cfg = [64, 128, 256, 512, 1024]
         basic_d_cfg = [1, 3, 9, 9, 6]
         # init w&d cfg
         w_cfg = [int(w*width) for w in basic_w_cfg]
@@ -103,29 +103,28 @@ class CSPDarkNet(nn.Module):
         print('=================================')
 
         self.layer_1 = nn.Sequential(
-            Conv(3, w_cfg[0], k=3, p=1, depthwise=depthwise),      
-            Conv(w_cfg[0], w_cfg[1], k=3, p=1, s=2, depthwise=depthwise),
-            CSPStage(c1=w_cfg[1], n=d_cfg[0], depthwise=depthwise)                       # p1/2
+            Conv(3, w_cfg[0], k=6, p=2, s=2, depthwise=depthwise),
+            CSPStage(c1=w_cfg[0], n=d_cfg[0], depthwise=depthwise)                       # p1/2
         )
         self.layer_2 = nn.Sequential(   
-            Conv(w_cfg[1], w_cfg[2], k=3, p=1, s=2, depthwise=depthwise),             
-            CSPStage(c1=w_cfg[2], n=d_cfg[1], depthwise=depthwise)                      # P2/4
+            Conv(w_cfg[0], w_cfg[1], k=3, p=1, s=2, depthwise=depthwise),             
+            CSPStage(c1=w_cfg[1], n=d_cfg[1], depthwise=depthwise)                      # P2/4
         )
         self.layer_3 = nn.Sequential(
-            Conv(w_cfg[2], w_cfg[3], k=3, p=1, s=2, depthwise=depthwise),             
-            CSPStage(c1=w_cfg[3], n=d_cfg[2], depthwise=depthwise)                      # P3/8
+            Conv(w_cfg[1], w_cfg[2], k=3, p=1, s=2, depthwise=depthwise),             
+            CSPStage(c1=w_cfg[2], n=d_cfg[2], depthwise=depthwise)                      # P3/8
         )
         self.layer_4 = nn.Sequential(
-            Conv(w_cfg[3], w_cfg[4], k=3, p=1, s=2, depthwise=depthwise),             
-            CSPStage(c1=w_cfg[4], n=d_cfg[3], depthwise=depthwise)                      # P4/16
+            Conv(w_cfg[2], w_cfg[3], k=3, p=1, s=2, depthwise=depthwise),             
+            CSPStage(c1=w_cfg[3], n=d_cfg[3], depthwise=depthwise)                      # P4/16
         )
         self.layer_5 = nn.Sequential(
-            Conv(w_cfg[4], w_cfg[5], k=3, p=1, s=2, depthwise=depthwise),             
-            CSPStage(c1=w_cfg[5], n=d_cfg[4], depthwise=depthwise)                     # P5/32
+            Conv(w_cfg[3], w_cfg[4], k=3, p=1, s=2, depthwise=depthwise),             
+            CSPStage(c1=w_cfg[4], n=d_cfg[4], depthwise=depthwise)                     # P5/32
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(w_cfg[5], num_classes)
+        self.fc = nn.Linear(w_cfg[4], num_classes)
 
 
     def forward(self, x):
