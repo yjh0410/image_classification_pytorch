@@ -64,10 +64,12 @@ class ELANBlock(nn.Module):
     def __init__(self, in_dim, out_dim, expand_ratio=0.5, model_size='large', act_type='silu', depthwise=False):
         super(ELANBlock, self).__init__()
         inter_dim = int(in_dim * expand_ratio)
-        if model_size == 'large':
-            depth = 2
-        elif model_size == 'tiny':
+        if model_size == 'tiny':
             depth = 1
+        elif model_size == 'large':
+            depth = 2
+        elif model_size == 'huge':
+            depth = 3
         self.cv1 = Conv(in_dim, inter_dim, k=1, act_type=act_type)
         self.cv2 = Conv(in_dim, inter_dim, k=1, act_type=act_type)
         self.cv3 = nn.Sequential(*[
@@ -144,23 +146,79 @@ class ELANNet(nn.Module):
         )
         self.layer_2 = nn.Sequential(   
             Conv(64, 128, k=3, p=1, s=2, act_type='silu', depthwise=depthwise),             
-            ELANBlock(in_dim=128, out_dim=256, expand_ratio=0.5, act_type='silu', depthwise=depthwise)                     # P2/4
+            ELANBlock(in_dim=128, out_dim=256, expand_ratio=0.5,
+                      model_size='large', act_type='silu', depthwise=depthwise)                     # P2/4
         )
         self.layer_3 = nn.Sequential(
             DownSample(in_dim=256, act_type='silu'),             
-            ELANBlock(in_dim=256, out_dim=512, expand_ratio=0.5, act_type='silu', depthwise=depthwise)                     # P3/8
+            ELANBlock(in_dim=256, out_dim=512, expand_ratio=0.5,
+                      model_size='large', act_type='silu', depthwise=depthwise)                     # P3/8
         )
         self.layer_4 = nn.Sequential(
             DownSample(in_dim=512, act_type='silu'),             
-            ELANBlock(in_dim=512, out_dim=1024, expand_ratio=0.5, act_type='silu', depthwise=depthwise)                    # P4/16
+            ELANBlock(in_dim=512, out_dim=1024, expand_ratio=0.5,
+                      model_size='large', act_type='silu', depthwise=depthwise)                    # P4/16
         )
         self.layer_5 = nn.Sequential(
             DownSample(in_dim=1024, act_type='silu'),             
-            ELANBlock(in_dim=1024, out_dim=1024, expand_ratio=0.25, act_type='silu', depthwise=depthwise)                  # P5/32
+            ELANBlock(in_dim=1024, out_dim=1024, expand_ratio=0.25,
+                      model_size='large', act_type='silu', depthwise=depthwise)                  # P5/32
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(1024, num_classes)
+
+
+    def forward(self, x):
+        x = self.layer_1(x)
+        x = self.layer_2(x)
+        x = self.layer_3(x)
+        x = self.layer_4(x)
+        x = self.layer_5(x)
+
+        # [B, C, H, W] -> [B, C, 1, 1]
+        x = self.avgpool(x)
+        # [B, C, 1, 1] -> [B, C]
+        x = x.flatten(1)
+        x = self.fc(x)
+
+        return x
+
+
+# ELANNet-Huge
+class ELANNet_Huge(nn.Module):
+    def __init__(self, depthwise=False, num_classes=1000):
+        super(ELANNet_Huge, self).__init__()
+        
+        # huge backbone
+        self.layer_1 = nn.Sequential(
+            Conv(3, 40, k=3, p=1, act_type='silu', depthwise=depthwise),      
+            Conv(40, 80, k=3, p=1, s=2, act_type='silu', depthwise=depthwise),
+            Conv(80, 80, k=3, p=1, act_type='silu', depthwise=depthwise)                                                   # P1/2
+        )
+        self.layer_2 = nn.Sequential(   
+            Conv(80, 160, k=3, p=1, s=2, act_type='silu', depthwise=depthwise),             
+            ELANBlock(in_dim=160, out_dim=320, expand_ratio=0.5,
+                      model_size='huge',act_type='silu', depthwise=depthwise)                     # P2/4
+        )
+        self.layer_3 = nn.Sequential(
+            DownSample(in_dim=320, act_type='silu'),             
+            ELANBlock(in_dim=320, out_dim=640, expand_ratio=0.5,
+                      model_size='huge',act_type='silu', depthwise=depthwise)                     # P3/8
+        )
+        self.layer_4 = nn.Sequential(
+            DownSample(in_dim=640, act_type='silu'),             
+            ELANBlock(in_dim=640, out_dim=1280, expand_ratio=0.5,
+                      model_size='huge',act_type='silu', depthwise=depthwise)                    # P4/16
+        )
+        self.layer_5 = nn.Sequential(
+            DownSample(in_dim=1280, act_type='silu'),             
+            ELANBlock(in_dim=1280, out_dim=1280, expand_ratio=0.25,
+                      model_size='huge',act_type='silu', depthwise=depthwise)                  # P5/32
+        )
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(1280, num_classes)
 
 
     def forward(self, x):
@@ -193,22 +251,22 @@ class ELANNet_Tiny(nn.Module):
         self.layer_2 = nn.Sequential(   
             Conv(32, 64, k=3, p=1, s=2, act_type='lrelu', depthwise=depthwise),             
             ELANBlock(in_dim=64, out_dim=64, expand_ratio=0.5,
-                    model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P2/4
+                      model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P2/4
         )
         self.layer_3 = nn.Sequential(
             nn.MaxPool2d((2, 2), 2),             
             ELANBlock(in_dim=64, out_dim=128, expand_ratio=0.5,
-                    model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P3/8
+                      model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P3/8
         )
         self.layer_4 = nn.Sequential(
             nn.MaxPool2d((2, 2), 2),             
             ELANBlock(in_dim=128, out_dim=256, expand_ratio=0.5,
-                    model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P4/16
+                      model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P4/16
         )
         self.layer_5 = nn.Sequential(
             nn.MaxPool2d((2, 2), 2),             
             ELANBlock(in_dim=256, out_dim=512, expand_ratio=0.5,
-                    model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P5/32
+                      model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P5/32
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -238,6 +296,7 @@ class ELANNet_Nano(nn.Module):
     """
     def __init__(self, depthwise=True, num_classes=1000):
         super(ELANNet_Nano, self).__init__()
+        assert depthwise
         
         # tiny backbone
         self.layer_1 = Conv(3, 16, k=3, p=1, s=2, act_type='lrelu', depthwise=depthwise)       # P1/2
@@ -245,22 +304,22 @@ class ELANNet_Nano(nn.Module):
         self.layer_2 = nn.Sequential(   
             Conv(16, 32, k=3, p=1, s=2, act_type='lrelu', depthwise=depthwise),             
             ELANBlock(in_dim=32, out_dim=32, expand_ratio=0.5,
-                    model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P2/4
+                      model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P2/4
         )
         self.layer_3 = nn.Sequential(
             nn.MaxPool2d((2, 2), 2),             
             ELANBlock(in_dim=32, out_dim=64, expand_ratio=0.5,
-                    model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P3/8
+                      model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P3/8
         )
         self.layer_4 = nn.Sequential(
             nn.MaxPool2d((2, 2), 2),             
             ELANBlock(in_dim=64, out_dim=128, expand_ratio=0.5,
-                    model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P4/16
+                      model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P4/16
         )
         self.layer_5 = nn.Sequential(
             nn.MaxPool2d((2, 2), 2),             
             ELANBlock(in_dim=128, out_dim=256, expand_ratio=0.5,
-                    model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P5/32
+                      model_size='tiny', act_type='lrelu', depthwise=depthwise)                  # P5/32
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -287,6 +346,8 @@ def build_elannet(model_name='elennet', pretrained=False):
     # model
     if model_name == 'elannet':
         model = ELANNet()
+    elif model_name == 'elannet_huge':
+        model = ELANNet_Huge()
     elif model_name == 'elannet_tiny':
         model = ELANNet_Tiny()
     elif model_name == 'elannet_nano':
@@ -320,7 +381,7 @@ def build_elannet(model_name='elennet', pretrained=False):
 
 if __name__ == '__main__':
     import time
-    net = build_elannet(model_name='elannet_nano')
+    net = build_elannet(model_name='elannet_huge')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = net(x)
