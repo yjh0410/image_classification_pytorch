@@ -2,15 +2,27 @@ python train.py --cuda \
                 --data_path /mnt/share/ssd2/dataset/imagenet/ \
                 --num_classes 1000 \
                 -m elannet_nano \
-                --wp_epoch 5 \
-                --max_epoch 200 \
-                --eval_epoch 10 \
-                --batch_size 128 \
-                --optimizer adamw \
-                --base_lr 4e-3 \
-                --min_lr 1e-6 \
-                -accu 32 \
-                --ema \
-                # --fp16 \
-                # --resume weights/cspd-s/cspd-s_epoch_41_67.70.pth
+                --wp_epoch 1 \
+                --max_epoch 90 \
+                --eval_epoch 2 \
+                --batch_size 256 \
+                --base_lr 0.1 \
+                --optimizer sgd \
+                --weight_decay 1e-4 \
+
+# python train.py --cuda \
+#                 --data_path /mnt/share/ssd2/dataset/imagenet/ \
+#                 --num_classes 1000 \
+#                 -m elannet_nano \
+#                 --wp_epoch 5 \
+#                 --max_epoch 200 \
+#                 --eval_epoch 10 \
+#                 --batch_size 128 \
+#                 --optimizer adamw \
+#                 --base_lr 4e-3 \
+#                 --min_lr 1e-6 \
+#                 -accu 32 \
+#                 --ema \
+#                 # --fp16 \
+#                 # --resume weights/cspd-s/cspd-s_epoch_41_67.70.pth
 
