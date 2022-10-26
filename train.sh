@@ -3,7 +3,7 @@ python train.py --cuda \
                 --num_classes 1000 \
                 -m elannet_nano \
                 --wp_epoch 5 \
-                --max_epoch 200 \
+                --max_epoch 300 \
                 --eval_epoch 10 \
                 --batch_size 128 \
                 --optimizer adamw \
