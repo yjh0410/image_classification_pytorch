@@ -291,9 +291,6 @@ class ELANNet_Tiny(nn.Module):
 
 # ELANNet-Nano
 class ELANNet_Nano(nn.Module):
-    """
-    ELAN-Net of YOLOv7-Tiny.
-    """
     def __init__(self, depthwise=True, num_classes=1000):
         super(ELANNet_Nano, self).__init__()
         assert depthwise
