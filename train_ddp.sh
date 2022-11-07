@@ -3,7 +3,7 @@
 python  -m torch.distributed.run --nproc_per_node=2 train.py --cuda \
                                                             --data_path /mnt/share/ssd2/dataset/imagenet/ \
                                                             --num_classes 1000 \
-                                                            -m elannet_huge \
+                                                            -m elannet_nano \
                                                             --wp_epoch 20 \
                                                             --max_epoch 300 \
                                                             --eval_epoch 10 \
