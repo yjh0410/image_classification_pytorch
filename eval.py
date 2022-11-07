@@ -32,7 +32,7 @@ def parse_args():
     # model config
     parser.add_argument('-size', '--img_size', type=int, default=224,
                         help='input size')
-    parser.add_argument('--num_classes', type=int, default=16,
+    parser.add_argument('--num_classes', type=int, default=1000,
                         help='number of classes')
 
 
@@ -42,45 +42,52 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # 指定cuda来调用GPU训练，默认不用，但要是安装了GPU版torch，一定要用
+    # cuda
     if args.cuda:
         print("use cuda")
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
 
-    # 构建数据集
-    pixel_mean = [0.]
-    pixel_std = [1.0]
+    # dataset
+    pixel_mean = [0.485, 0.456, 0.406]
+    pixel_std = [0.229, 0.224, 0.225]
     val_data_root = os.path.join(args.data_path, 'val')
+    ## val dataset
     val_dataset = torchvision.datasets.ImageFolder(
                         root=val_data_root, 
                         transform=tf.Compose([
-                            tf.Resize(args.img_size),
+                            tf.Resize(256),
+                            tf.CenterCrop(224),
                             tf.ToTensor(),
                             tf.Normalize(pixel_mean,
                                         pixel_std)]))
     val_loader = torch.utils.data.DataLoader(
                         dataset=val_dataset,
-                        batch_size=1, 
+                        batch_size=args.batch_size, 
                         shuffle=False,
                         num_workers=args.num_workers, 
                         pin_memory=True)
     
     print('total validation data size : ', len(val_dataset))
 
-    # 构建模型
-    model = build_model(model_name=args.model, 
-                        num_classes=args.num_classes)
-    # 加载训练好的模型文件，args.weight就是指向模型权重文件的路径
+    # model
+    model = build_model(
+        model_name=args.model,
+        pretrained=args.pretrained, 
+        num_classes=args.num_classes,
+        resume=args.resume
+        )
+
+    # load checkpoint
     model.load_state_dict(torch.load(args.weight, map_location='cpu')["model"], strict=False)
-    model = model.to(device).eval()
+    model.to(device).eval()
     print('Finished loading model!')
 
-    # 定义loss函数，这是标准的分类问题使用的交叉熵函数
+    # loss
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
-    print("-------------- start training ----------------")
+    print("-------------- start evaluating ----------------")
     acc1_num_pos = 0.
     count = 0.
     with torch.no_grad():

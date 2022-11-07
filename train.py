@@ -280,6 +280,7 @@ def main():
             # loss
             loss = criterion(output, target)
 
+            # check loss
             if torch.isnan(loss):
                 continue
 
@@ -310,7 +311,7 @@ def main():
                 ema.update(model)
 
 
-            if iter_i % 10 == 0:
+            if distributed_utils.is_main_process() and iter_i % 10 == 0:
                 if args.tfboard:
                     # viz loss
                     tblogger.add_scalar('loss',  loss.item() * args.accumulation,  ni)
@@ -335,8 +336,8 @@ def main():
                 t0 = time.time()
 
         # evaluate
-        if (epoch % args.eval_epoch) == 0 or (epoch == total_epochs - 1):
-            if distributed_utils.is_main_process():
+        if distributed_utils.is_main_process():
+            if (epoch % args.eval_epoch) == 0 or (epoch == total_epochs - 1):
                 print('evaluating ...')
                 model_eval = ema.ema if args.ema else model_without_ddp
                 loss, acc1 = validate(
