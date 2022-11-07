@@ -334,6 +334,7 @@ def main():
                 print(log, flush=True)
                 
                 t0 = time.time()
+            break
 
         # evaluate
         if distributed_utils.is_main_process():
