@@ -1,6 +1,7 @@
 # 32 GPUs
 # Attention, the following batch size is on single GPU, not all GPUs.
 python  -m torch.distributed.run --nproc_per_node=2 train.py --cuda \
+                                                            --dist \
                                                             --data_path /mnt/share/ssd2/dataset/imagenet/ \
                                                             --num_classes 1000 \
                                                             -m elannet_nano \
