@@ -25,7 +25,7 @@ class Mixer(nn.Module):
 
 
 class ConvMixer(nn.Module):
-    def __init__(self, dim, depth=20, stride=16):
+    def __init__(self, dim, depth=20, stride=16, num_classes=1000):
         super().__init__()
         self.dim = dim
         self.depth = depth
@@ -40,9 +40,20 @@ class ConvMixer(nn.Module):
         mixers = [Mixer(dim, dim) for _ in range(depth)]
         self.mixers = nn.Sequential(*mixers)
 
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(dim, num_classes)
+
     def forward(self, x):
         x = self.patch_embed(x)
-        return self.mixers(x)
+        x = self.mixers(x)
+
+        # [B, C, H, W] -> [B, C, 1, 1]
+        x = self.avgpool(x)
+        # [B, C, 1, 1] -> [B, C]
+        x = x.flatten(1)
+        x = self.fc(x)
+
+        return x
             
 
 # build elannet
