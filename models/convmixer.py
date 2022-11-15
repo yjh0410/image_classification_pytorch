@@ -60,7 +60,7 @@ class ConvMixer(nn.Module):
 def build_convmixer(model_name='convmixer_base', pretrained=False):
     # config
     model_size = model_name[-5:]
-    model_dim = 512
+    model_dim = 768
     model_depth = 24
 
     # ConvMixer
