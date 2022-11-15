@@ -5,6 +5,7 @@ from .darknet19 import build_darknet19
 from .darknet53 import build_darknet53
 from .cspdarknet import build_cspd
 from .elannet import build_elannet
+from .convmixer import build_convmixer
 
 
 def build_model(model_name='resnet18',
@@ -24,8 +25,8 @@ def build_model(model_name='resnet18',
             pretrained=pretrained
         )
 
-    elif model_name in ['elannet', 'elannet_huge', 'elannet_tiny', 'elannet_nano']:
-        model = build_elannet(
+    elif model_name in ['convmixer_base', 'convmixer_huge', 'convmixer_tiny']:
+        model = build_convmixer(
             model_name=model_name,
             pretrained=pretrained
         )
@@ -36,6 +37,8 @@ def build_model(model_name='resnet18',
     elif model_name == 'darknet53':
         model = build_darknet53(pretrained=pretrained)
 
+    elif model_name == 'convmixer':
+        model = build_darknet53(pretrained=pretrained)
 
     if resume is not None:
         print('keep training: ', resume)
