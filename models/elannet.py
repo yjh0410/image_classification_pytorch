@@ -270,7 +270,7 @@ class ELANNet_Tiny(nn.Module):
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(256, num_classes)
+        self.fc = nn.Linear(512, num_classes)
 
 
     def forward(self, x):
@@ -379,7 +379,7 @@ def build_elannet(model_name='elennet', pretrained=False):
 
 if __name__ == '__main__':
     import time
-    net = build_elannet(model_name='elannet')
+    net = build_elannet(model_name='elannet_tiny')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = net(x)

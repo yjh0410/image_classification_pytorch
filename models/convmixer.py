@@ -3,6 +3,7 @@ import torch.nn as nn
 
 
 model_urls = {
+    "convmixer_tiny": None,
     "convmixer_base": None,
 }
 
@@ -59,9 +60,15 @@ class ConvMixer(nn.Module):
 # build elannet
 def build_convmixer(model_name='convmixer_base', pretrained=False):
     # config
-    model_size = model_name[-5:]
-    model_dim = 768
-    model_depth = 24
+    if model_name == 'convmixer_base':
+        model_size = model_name[-5:]
+        model_dim = 768
+        model_depth = 24
+
+    if model_name == 'convmixer_tiny':
+        model_size = model_name[-5:]
+        model_dim = 384
+        model_depth = 12
 
     # ConvMixer
     model = ConvMixer(model_dim, model_depth)
@@ -98,7 +105,7 @@ def build_convmixer(model_name='convmixer_base', pretrained=False):
 
 if __name__ == '__main__':
     import time
-    net = build_convmixer(model_name='convmixer_base', pretrained=False)
+    net = build_convmixer(model_name='convmixer_tiny', pretrained=False)
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = net(x)
