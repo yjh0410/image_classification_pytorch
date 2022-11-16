@@ -11,6 +11,6 @@ python train.py --cuda \
                 --min_lr 1e-6 \
                 -accu 32 \
                 --ema \
-                --resume weights/cspd-s/elannet_huge_epoch_70_73.49.pth
+                --resume weights/elannet_huge/elannet_huge_epoch_70_73.49.pth
                 # --fp16 \
 
