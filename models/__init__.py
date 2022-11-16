@@ -25,6 +25,12 @@ def build_model(model_name='resnet18',
             pretrained=pretrained
         )
 
+    elif model_name in ['elannet_nano', 'elannet_tiny', 'elannet_large', 'elannet_huge']:
+        model = build_elannet(
+            model_name=model_name,
+            pretrained=pretrained
+        )
+
     elif model_name in ['convmixer_base', 'convmixer_huge', 'convmixer_tiny']:
         model = build_convmixer(
             model_name=model_name,

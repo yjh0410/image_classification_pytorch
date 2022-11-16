@@ -130,13 +130,13 @@ class DownSample(nn.Module):
         return out
 
 
-# ELANNet
-class ELANNet(nn.Module):
+# ELANNet-Large
+class ELANNet_Large(nn.Module):
     """
     ELAN-Net of YOLOv7.
     """
     def __init__(self, depthwise=False, num_classes=1000):
-        super(ELANNet, self).__init__()
+        super(ELANNet_Large, self).__init__()
         
         # large backbone
         self.layer_1 = nn.Sequential(
@@ -340,10 +340,10 @@ class ELANNet_Nano(nn.Module):
 
 
 # build elannet
-def build_elannet(model_name='elennet', pretrained=False):
+def build_elannet(model_name='elennet_large', pretrained=False):
     # model
-    if model_name == 'elannet':
-        model = ELANNet()
+    if model_name == 'elennet_large':
+        model = ELANNet_Large()
     elif model_name == 'elannet_huge':
         model = ELANNet_Huge()
     elif model_name == 'elannet_tiny':
