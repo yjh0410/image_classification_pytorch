@@ -30,6 +30,8 @@ def parse_args():
                         default=256, help='batch size')
     parser.add_argument('--wp_epoch', type=int, default=20, 
                         help='warmup epoch')
+    parser.add_argument('--start_epoch', type=int, default=0, 
+                        help='start epoch')
     parser.add_argument('--max_epoch', type=int, default=300, 
                         help='max epoch')
     parser.add_argument('--eval_epoch', type=int, default=1, 
