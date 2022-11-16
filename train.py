@@ -217,19 +217,10 @@ def main():
             weight_decay=args.weight_decay
             )
 
-    start_epoch = 0
-    if args.resume is not None:
-        print('keep training: ', args.resume)
-        checkpoint = torch.load(args.resume)
-        # checkpoint state dict
-        checkpoint_state_dict = checkpoint.pop("optimizer")
-        optimizer.load_state_dict(checkpoint_state_dict)
-        start_epoch = checkpoint.pop("epoch")
-
     # EMA
     if args.ema:
         print('use EMA ...')
-        ema = ModelEMA(model, start_epoch*epoch_size)
+        ema = ModelEMA(model, args.start_epoch*epoch_size)
     else:
         ema = None
 
@@ -238,7 +229,7 @@ def main():
 
     t0 = time.time()
     print("-------------- start training ----------------")
-    for epoch in range(start_epoch, total_epochs):
+    for epoch in range(args.start_epoch, total_epochs):
         if not warmup:
             # use cos lr decay
             T_max = total_epochs - 15
