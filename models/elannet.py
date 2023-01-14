@@ -186,7 +186,7 @@ class ELANNet(nn.Module):
 
 
 # build ELAN-Net
-def build_elannet(model_name='elannet_large'): 
+def build_elannet(model_name='elannet_large', pretrained=False): 
     # model
     if model_name == 'elannet_huge':
         model = ELANNet(width=1.25, depth=1.0, act_type='silu', norm_type='BN')
