@@ -25,7 +25,7 @@ def build_model(model_name='resnet18',
             pretrained=pretrained
         )
 
-    elif model_name in ['elannet_nano', 'elannet_tiny', 'elannet_large', 'elannet_huge']:
+    elif model_name in ['elannet_nano', 'elannet_tiny', 'elannet_medium','elannet_large', 'elannet_huge']:
         model = build_elannet(
             model_name=model_name,
             pretrained=pretrained

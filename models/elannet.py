@@ -189,9 +189,11 @@ class ELANNet(nn.Module):
 def build_elannet(model_name='elannet_large', pretrained=False): 
     # model
     if model_name == 'elannet_huge':
-        model = ELANNet(width=1.25, depth=1.0, act_type='silu', norm_type='BN')
+        model = ELANNet(width=1.25, depth=1.33, act_type='silu', norm_type='BN')
     elif model_name == 'elannet_large':
-        model = ELANNet(width=1.0, depth=0.67, act_type='silu', norm_type='BN')
+        model = ELANNet(width=1.0, depth=1.0, act_type='silu', norm_type='BN')
+    elif model_name == 'elannet_medium':
+        model = ELANNet(width=0.75, depth=0.67, act_type='silu', norm_type='BN')
     elif model_name == 'elannet_tiny':
         model = ELANNet(width=0.5, depth=0.34, act_type='lrelu', norm_type='BN')
     elif model_name == 'elannet_nano':
