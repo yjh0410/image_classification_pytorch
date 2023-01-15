@@ -194,7 +194,7 @@ def build_elannet(model_name='elannet_large', pretrained=False):
         model = ELANNet(width=1.0, depth=1.0, act_type='silu', norm_type='BN')
     elif model_name == 'elannet_medium':
         model = ELANNet(width=0.75, depth=0.67, act_type='silu', norm_type='BN')
-    elif model_name == 'elannet_tiny':
+    elif model_name == 'elannet_small':
         model = ELANNet(width=0.5, depth=0.34, act_type='silu', norm_type='BN')
     elif model_name == 'elannet_nano':
         model = ELANNet(width=0.25, depth=0.34, act_type='lrelu', norm_type='BN')
