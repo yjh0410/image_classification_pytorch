@@ -1,7 +1,7 @@
 python train.py --cuda \
                 --data_path /mnt/share/ssd2/dataset/imagenet/ \
                 --num_classes 1000 \
-                -m elannet_small \
+                -m elannet_huge \
                 --wp_epoch 10 \
                 --max_epoch 90 \
                 --eval_epoch 5 \
