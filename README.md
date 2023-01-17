@@ -31,5 +31,5 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 | ELANNet-Small       | 100   | 224  |   | 0.8 B | 3.2 M  |  |
 | ELANNet-Medium      | 100   | 224  |   | 2.2 B | 8.3 M  |  |
 | ELANNet-Large       | 100   | 224  |   | 3.8 B | 14.4 M |  |
-| ELANNet-Huge        | 100   | 224  |   | 7.1 B | 26.4 M |  |
+| ELANNet-Huge        | 100   | 224  |   | 16.6 B| 30.7 M |  |
 

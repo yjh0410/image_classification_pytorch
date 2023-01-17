@@ -189,7 +189,7 @@ class ELANNet(nn.Module):
 def build_elannet(model_name='elannet_large', pretrained=False): 
     # model
     if model_name == 'elannet_huge':
-        model = ELANNet(width=1.25, depth=1.33, act_type='silu', norm_type='BN')
+        model = ELANNet(width=1.25, depth=1.34, act_type='silu', norm_type='BN')
     elif model_name == 'elannet_large':
         model = ELANNet(width=1.0, depth=1.0, act_type='silu', norm_type='BN')
     elif model_name == 'elannet_medium':
@@ -205,7 +205,7 @@ def build_elannet(model_name='elannet_large', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_elannet(model_name='elannet_nano')
+    model = build_elannet(model_name='elannet_huge')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)

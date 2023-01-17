@@ -379,9 +379,18 @@ def build_elannet(model_name='elennet_large', pretrained=False):
 
 if __name__ == '__main__':
     import time
-    net = build_elannet(model_name='elannet_tiny')
+    from thop import profile
+    model = build_elannet(model_name='elannet_huge')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
-    y = net(x)
+    y = model(x)
     t1 = time.time()
     print('Time: ', t1 - t0)
+
+    x = torch.randn(1, 3, 224, 224)
+    print('==============================')
+    flops, params = profile(model, inputs=(x, ), verbose=False)
+    print('==============================')
+    print('GFLOPs : {:.2f}'.format(flops / 1e9 * 2))
+    print('Params : {:.2f} M'.format(params / 1e6))
+
