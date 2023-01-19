@@ -28,7 +28,7 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 | DarkNet-53-SiLU     | 100   | 224  |   | 14.3 B| 41.6 M |  |
 | CSP-DarkNet-53-SiLU | 100   | 224  |   | 27.3 B| 9.4 M  |  |
 | ELANNet-Nano        | 100   | 224  |  59.4 | 0.2 B | 0.9 M  | [github](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_nano.pth) |
-| ELANNet-Small       | 100   | 224  |   | 0.8 B | 3.2 M  |  |
+| ELANNet-Small       | 100   | 224  |  70.1 | 0.8 B | 3.2 M  | [github](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_small.pth) |
 | ELANNet-Medium      | 100   | 224  |   | 2.2 B | 8.3 M  |  |
 | ELANNet-Large       | 100   | 224  |   | 3.8 B | 14.4 M |  |
 | ELANNet-Huge        | 100   | 224  |   | 16.6 B| 30.7 M |  |
