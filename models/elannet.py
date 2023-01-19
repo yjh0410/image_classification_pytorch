@@ -205,7 +205,7 @@ def build_elannet(model_name='elannet_large', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_elannet(model_name='elannet_huge')
+    model = build_elannet(model_name='elannet_nano')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
