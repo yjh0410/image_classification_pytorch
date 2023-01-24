@@ -83,7 +83,7 @@ class ELANBlock(nn.Module):
             for _ in range(int(3*depth))
         ])
 
-        self.out = Conv(inter_dim*4, out_dim, k=1)
+        self.out = Conv(inter_dim*4, out_dim, k=1, act_type=act_type, norm_type=norm_type)
 
 
 
