@@ -173,6 +173,7 @@ def main():
         resume=args.resume
         )
     model.train().to(device)
+    print(model)
 
     # DDP
     model_without_ddp = model

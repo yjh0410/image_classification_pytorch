@@ -86,7 +86,6 @@ class ELANBlock(nn.Module):
         self.out = Conv(inter_dim*4, out_dim, k=1, act_type=act_type, norm_type=norm_type)
 
 
-
     def forward(self, x):
         """
         Input:
