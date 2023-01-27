@@ -134,9 +134,9 @@ class CSPBlock(nn.Module):
 
 
 # DarkNet53
-class DarkNet53(nn.Module):
+class DarkNet53_SiLU(nn.Module):
     def __init__(self, csp_block=False, act_type='silu', norm_type='BN', num_classes=1000):
-        super(DarkNet53, self).__init__()
+        super(DarkNet53_SiLU, self).__init__()
         self.feat_dims = [256, 512, 1024]
 
         # stride = 2
@@ -196,13 +196,13 @@ class DarkNet53(nn.Module):
         return outputs
 
 
-def build_darknet53(csp_block=False, pretrained=False): 
+def build_darknet53_silu(csp_block=False, pretrained=False): 
     """Constructs a darknet-53 model.
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = DarkNet53(csp_block, act_type='silu', norm_type='BN')
+    model = DarkNet53_SiLU(csp_block, act_type='silu', norm_type='BN')
 
     return model
 
@@ -210,7 +210,7 @@ def build_darknet53(csp_block=False, pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_darknet53(csp_block=False)
+    model = build_darknet53_silu(csp_block=False)
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)

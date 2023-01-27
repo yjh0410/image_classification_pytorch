@@ -1,6 +1,8 @@
 import torch
 
-from .darknet import build_darknet53
+from .darknet19 import build_darknet19
+from .darknet53 import build_darknet53
+from .darknet import build_darknet53_silu
 from .elannet import build_elannet
 
 
@@ -16,11 +18,17 @@ def build_model(model_name='resnet18',
             pretrained=pretrained
         )
 
-    elif model_name == 'darknet53':
-        model = build_darknet53(csp_block=False, pretrained=pretrained)
+    elif model_name == 'darknet19':
+        model = build_darknet19(pretrained=pretrained)
 
-    elif model_name == 'cspdarknet53':
-        model = build_darknet53(csp_block=True, pretrained=pretrained)
+    elif model_name == 'darknet53':
+        model = build_darknet53(pretrained=pretrained)
+
+    elif model_name == 'darknet53_silu':
+        model = build_darknet53_silu(csp_block=False, pretrained=pretrained)
+
+    elif model_name == 'cspdarknet53_silu':
+        model = build_darknet53_silu(csp_block=True, pretrained=pretrained)
 
     if resume is not None:
         print('keep training: ', resume)
