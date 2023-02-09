@@ -117,6 +117,7 @@ class ELAN_CSP_Block(nn.Module):
 
 # ELAN-CSPNet
 class ELAN_CSPNet(nn.Module):
+    """ YOLOv8' backbone """
     def __init__(self, width=1.0, depth=1.0, ratio=1.0, act_type='silu', norm_type='BN', depthwise=False, num_classes=1000):
         super(ELAN_CSPNet, self).__init__()
 
