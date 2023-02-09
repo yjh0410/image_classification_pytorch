@@ -155,15 +155,10 @@ class ELAN_CSPNet(nn.Module):
 
     def forward(self, x):
         x = self.layer_1(x)
-        print(x.shape)
         x = self.layer_2(x)
-        print(x.shape)
         x = self.layer_3(x)
-        print(x.shape)
         x = self.layer_4(x)
-        print(x.shape)
         x = self.layer_5(x)
-        print(x.shape)
 
         # [B, C, H, W] -> [B, C, 1, 1]
         x = self.avgpool(x)
