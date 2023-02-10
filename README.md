@@ -38,5 +38,5 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 | ELAN-CSPNet-Small   | 100   | 224  |   | 1.6    | 4.3 M  |  |
 | ELAN-CSPNet-Medium  | 100   | 224  |   | 5.0    | 10.3 M |  |
 | ELAN-CSPNet-Large   | 100   | 224  |   | 11.1   | 17.6 M |  |
-| ELAN-CSPNet-Huge    | 100   | 224  |   | 21.5   | 34.7 M |  |
+| ELAN-CSPNet-Huge    | 100   | 224  |   | 17.3   | 27.4 M |  |
 

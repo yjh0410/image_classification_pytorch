@@ -204,7 +204,7 @@ class ELAN_CSPNet(nn.Module):
 def build_elan_cspnet(model_name='elan_cspnet_large', pretrained=False): 
     # model
     if model_name == 'elan_cspnet_huge':
-        model = ELAN_CSPNet(width=1.25, depth=1.34, ratio=1.0, act_type='silu', norm_type='BN')
+        model = ELAN_CSPNet(width=1.25, depth=1.0, ratio=1.0, act_type='silu', norm_type='BN')
     elif model_name == 'elan_cspnet_large':
         model = ELAN_CSPNet(width=1.0, depth=1.0, ratio=1.0, act_type='silu', norm_type='BN')
     elif model_name == 'elan_cspnet_medium':
