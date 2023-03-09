@@ -33,10 +33,8 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 | ELANNet-Medium      | 100   | 224  |  74.1 | 4.3    | 8.3 M  | [github](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_medium.pth) |
 | ELANNet-Large       | 100   | 224  |  75.7 | 9.2    | 17.1 M | [github](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_large.pth) |
 | ELANNet-Huge        | 100   | 224  |  76.5 | 16.6   | 30.7 M | [github](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_huge.pth) |
-| ELAN-CSPNet-Nano    | 100   | 224  |   | 0.2    | 0.8 M  |  |
-| ELAN-CSPNet-Tiny    | 100   | 224  |   | 0.4    | 1.2 M  |  |
-| ELAN-CSPNet-Small   | 100   | 224  |   | 1.6    | 4.3 M  |  |
-| ELAN-CSPNet-Medium  | 100   | 224  |   | 5.0    | 10.3 M |  |
-| ELAN-CSPNet-Large   | 100   | 224  |   | 11.1   | 17.6 M |  |
-| ELAN-CSPNet-Huge    | 100   | 224  |   | 17.3   | 27.4 M |  |
+| ELANNet-P6-Large    | 100   | 256  |   | 11.7   | 39.6 M |  |
+| ELANNet-P6-Huge     | 100   | 256  |   | 21.9   | 75.6 M |  |
+| ELANNet-P7-Large    | 100   | 256  |   | 11.8   | 48.2 M |  |
+| ELANNet-P7-Huge     | 100   | 256  |   | 22.1   | 90.7 M |  |
 

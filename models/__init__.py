@@ -13,7 +13,9 @@ def build_model(model_name='resnet18',
                 resume=None):
     if model_name in ['elannet_nano',  'elannet_tiny',
                       'elannet_small', 'elannet_medium',
-                      'elannet_large', 'elannet_huge']:
+                      'elannet_large', 'elannet_huge',
+                      'elannet_p6_large', 'elannet_p6_huge',
+                      'elannet_p7_large', 'elannet_p7_huge']:
         model = build_elannet(
             model_name=model_name,
             pretrained=pretrained
