@@ -5,6 +5,7 @@ from .darknet53 import build_darknet53
 from .darknet import build_darknet53_silu
 from .elannet import build_elannet
 from .elan_cspnet import build_elan_cspnet
+from .cspdarknet import build_cspdarknet
 
 
 def build_model(model_name='resnet18',
@@ -25,6 +26,13 @@ def build_model(model_name='resnet18',
                         'elan_cspnet_small', 'elan_cspnet_medium',
                         'elan_cspnet_large', 'elan_cspnet_huge']:
         model = build_elan_cspnet(
+            model_name=model_name,
+            pretrained=pretrained
+        )
+
+    elif model_name in ['cspdarknet_nano',  'cspdarknet_small', 'cspdarknet_medium',
+                        'cspdarknet_large', 'cspdarknet_huge']:
+        model = build_cspdarknet(
             model_name=model_name,
             pretrained=pretrained
         )
