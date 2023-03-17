@@ -11,7 +11,7 @@ def build_model(model_name='resnet18',
                 pretrained=False,
                 num_classes=1000,
                 resume=None):
-    if model_name in ['elannet_pico',  'elannet_nano',
+    if model_name in ['elannet_pico',  'elannet_nano',   'elannet_tiny'
                       'elannet_small', 'elannet_medium',
                       'elannet_large', 'elannet_huge',
                       'elannet_p6_large', 'elannet_p6_huge',
