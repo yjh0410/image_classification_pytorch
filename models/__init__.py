@@ -22,8 +22,7 @@ def build_model(model_name='resnet18',
             pretrained=pretrained
         )
 
-    elif model_name in ['elan_cspnet_nano',  'elan_cspnet_tiny',
-                        'elan_cspnet_small', 'elan_cspnet_medium',
+    elif model_name in ['elan_cspnet_nano',  'elan_cspnet_small', 'elan_cspnet_medium',
                         'elan_cspnet_large', 'elan_cspnet_huge']:
         model = build_elan_cspnet(
             model_name=model_name,

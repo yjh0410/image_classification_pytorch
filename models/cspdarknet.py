@@ -217,7 +217,7 @@ def build_cspdarknet(model_name='cspdarknet_large', pretrained=False):
     elif model_name == 'cspdarknet_small':
         model = CSPDarkNet(width=0.5, depth=0.34, act_type='silu', norm_type='BN')
     elif model_name == 'cspdarknet_nano':
-        model = CSPDarkNet(width=0.25, depth=0.34, act_type='lrelu', norm_type='BN')
+        model = CSPDarkNet(width=0.25, depth=0.34, act_type='silu', norm_type='BN')
 
     return model
 
