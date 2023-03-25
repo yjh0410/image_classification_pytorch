@@ -158,7 +158,7 @@ class SPPF(nn.Module):
 # ---------------------------- CSPDarkNet ----------------------------
 # CSPDarkNet
 class CSPDarkNet(nn.Module):
-    def __init__(self, depth=1.0, width=1.0, act_type='silu', norm_type='BN', depthwise=False):
+    def __init__(self, depth=1.0, width=1.0, act_type='silu', norm_type='BN', depthwise=False, num_classes=1000):
         super(CSPDarkNet, self).__init__()
         self.feat_dims = [int(224*width), int(512*width), int(1024*width)]
 
@@ -191,17 +191,24 @@ class CSPDarkNet(nn.Module):
                      shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
         )
 
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(int(1024*width), num_classes)
+
 
     def forward(self, x):
-        c1 = self.layer_1(x)
-        c2 = self.layer_2(c1)
-        c3 = self.layer_3(c2)
-        c4 = self.layer_4(c3)
-        c5 = self.layer_5(c4)
+        x = self.layer_1(x)
+        x = self.layer_2(x)
+        x = self.layer_3(x)
+        x = self.layer_4(x)
+        x = self.layer_5(x)
 
-        outputs = [c3, c4, c5]
+        # [B, C, H, W] -> [B, C, 1, 1]
+        x = self.avgpool(x)
+        # [B, C, 1, 1] -> [B, C]
+        x = x.flatten(1)
+        x = self.fc(x)
 
-        return outputs
+        return x
 
 
 # ---------------------------- Functions ----------------------------
@@ -225,7 +232,7 @@ def build_cspdarknet(model_name='cspdarknet_large', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_cspdarknet(model_name='cspdarknet_nano')
+    model = build_cspdarknet(model_name='cspdarknet_huge')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
