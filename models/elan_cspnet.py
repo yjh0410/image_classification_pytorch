@@ -189,14 +189,13 @@ def build_elan_cspnet(model_name='elan_cspnet_large', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_elan_cspnet(model_name='elan_cspnet_nano')
-    x = torch.randn(1, 3, 224, 224)
+    model = build_elan_cspnet(model_name='elan_cspnet_large')
+    x = torch.randn(1, 3, 640, 640)
     t0 = time.time()
     y = model(x)
     t1 = time.time()
     print('Time: ', t1 - t0)
 
-    x = torch.randn(1, 3, 224, 224)
     print('==============================')
     flops, params = profile(model, inputs=(x, ), verbose=False)
     print('==============================')
