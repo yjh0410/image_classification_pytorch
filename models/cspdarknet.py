@@ -191,8 +191,8 @@ class CSPDarkNet(nn.Module):
                      shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
         )
 
-        # self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        # self.fc = nn.Linear(int(1024*width), num_classes)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(int(1024*width), num_classes)
 
 
     def forward(self, x):
@@ -202,11 +202,11 @@ class CSPDarkNet(nn.Module):
         x = self.layer_4(x)
         x = self.layer_5(x)
 
-        # # [B, C, H, W] -> [B, C, 1, 1]
-        # x = self.avgpool(x)
-        # # [B, C, 1, 1] -> [B, C]
-        # x = x.flatten(1)
-        # x = self.fc(x)
+        # [B, C, H, W] -> [B, C, 1, 1]
+        x = self.avgpool(x)
+        # [B, C, 1, 1] -> [B, C]
+        x = x.flatten(1)
+        x = self.fc(x)
 
         return x
 
