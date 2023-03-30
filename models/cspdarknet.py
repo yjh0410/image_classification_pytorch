@@ -160,7 +160,7 @@ class SPPF(nn.Module):
 class CSPDarkNet(nn.Module):
     def __init__(self, depth=1.0, width=1.0, act_type='silu', norm_type='BN', depthwise=False, num_classes=1000):
         super(CSPDarkNet, self).__init__()
-        self.feat_dims = [int(224*width), int(512*width), int(1024*width)]
+        self.feat_dims = [int(256*width), int(512*width), int(1024*width)]
 
         # P1
         self.layer_1 = Conv(3, int(64*width), k=6, p=2, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
@@ -173,13 +173,13 @@ class CSPDarkNet(nn.Module):
         )
         # P3
         self.layer_3 = nn.Sequential(
-            Conv(int(128*width), int(224*width), k=3, p=1, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise),
-            CSPBlock(int(224*width), int(224*width), expand_ratio=0.5, nblocks=int(9*depth),
+            Conv(int(128*width), int(256*width), k=3, p=1, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise),
+            CSPBlock(int(256*width), int(256*width), expand_ratio=0.5, nblocks=int(9*depth),
                      shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
         )
         # P4
         self.layer_4 = nn.Sequential(
-            Conv(int(224*width), int(512*width), k=3, p=1, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise),
+            Conv(int(256*width), int(512*width), k=3, p=1, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise),
             CSPBlock(int(512*width), int(512*width), expand_ratio=0.5, nblocks=int(9*depth),
                      shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
         )
@@ -191,8 +191,8 @@ class CSPDarkNet(nn.Module):
                      shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
         )
 
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(int(1024*width), num_classes)
+        # self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        # self.fc = nn.Linear(int(1024*width), num_classes)
 
 
     def forward(self, x):
@@ -202,11 +202,11 @@ class CSPDarkNet(nn.Module):
         x = self.layer_4(x)
         x = self.layer_5(x)
 
-        # [B, C, H, W] -> [B, C, 1, 1]
-        x = self.avgpool(x)
-        # [B, C, 1, 1] -> [B, C]
-        x = x.flatten(1)
-        x = self.fc(x)
+        # # [B, C, H, W] -> [B, C, 1, 1]
+        # x = self.avgpool(x)
+        # # [B, C, 1, 1] -> [B, C]
+        # x = x.flatten(1)
+        # x = self.fc(x)
 
         return x
 
@@ -232,14 +232,14 @@ def build_cspdarknet(model_name='cspdarknet_large', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_cspdarknet(model_name='cspdarknet_huge')
-    x = torch.randn(1, 3, 224, 224)
+    model = build_cspdarknet(model_name='cspdarknet_large')
+    x = torch.randn(1, 3, 256, 256)
     t0 = time.time()
     y = model(x)
     t1 = time.time()
     print('Time: ', t1 - t0)
 
-    x = torch.randn(1, 3, 224, 224)
+    x = torch.randn(1, 3, 256, 256)
     print('==============================')
     flops, params = profile(model, inputs=(x, ), verbose=False)
     print('==============================')
