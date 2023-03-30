@@ -41,6 +41,6 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 | CSPDarkNet-Nano     | 100   | 224  |   | 0.3    | 1.3 M  |  |
 | CSPDarkNet-Small    | 100   | 224  |   | 1.3    | 4.6 M  |  |
 | CSPDarkNet-Medium   | 100   | 224  |   | 3.8    | 12.8 M |  |
-| CSPDarkNet-Large    | 100   | 224  |   | 8.6    | 27.5 M |  |
+| CSPDarkNet-Large    | 100   | 224  | 73.3  | 8.6    | 27.5 M | [github](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/cspdarknet_large.pth) |
 | CSPDarkNet-Huge     | 100   | 224  |   | 16.3   | 50.5 M |  |
 
