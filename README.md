@@ -65,7 +65,7 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 |    Model            | Epoch | size | acc@1 | GFLOPs | Params |  Weight |
 |---------------------|-------|------|-------|--------|--------|---------|
 | ELAN-CSPNet-Nano    | 100   | 224  |  61.4 | 0.4    | 1.3 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elan_cspnet_nano.pth) |
-| ELAN-CSPNet-Small   | 100   | 224  |   | 1.4    | 4.9 M  |  |
+| ELAN-CSPNet-Small   | 100   | 224  |  70.5 | 1.4    | 4.9 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elan_cspnet_small.pth) |
 | ELAN-CSPNet-Medium  | 100   | 224  |   | 4.7    | 11.6 M |  |
 | ELAN-CSPNet-Large   | 100   | 224  |  75.8 | 10.5   | 19.6 M | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elan_cspnet_large.pth) |
 | ELAN-CSPNet-Huge    | 100   | 224  |   | 16.3   | 30.6 M |  |
