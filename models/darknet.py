@@ -262,9 +262,9 @@ def build_darknet(model_name='darknet53_silu', csp_block=False, pretrained=False
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    if model_name in ['darknet53_silu', 'cspdarknet53_silu'] and not csp_block:
+    if model_name in ['darknet53_silu', 'cspdarknet53_silu']:
         model = DarkNet53_SiLU(csp_block, act_type='silu', norm_type='BN')
-    elif model_name in ['darknet_tiny', 'cspdarknet_tiny'] and csp_block:
+    elif model_name in ['darknet_tiny', 'cspdarknet_tiny']:
         model = DarkNetTiny(csp_block, act_type='silu', norm_type='BN')
 
     return model
