@@ -193,16 +193,79 @@ class DarkNet53_SiLU(nn.Module):
         x = self.fc(x)
 
         return x
-        return outputs
 
 
-def build_darknet53_silu(csp_block=False, pretrained=False): 
+# DarkNet53
+class DarkNetTiny(nn.Module):
+    def __init__(self, csp_block=False, act_type='silu', norm_type='BN', num_classes=1000):
+        super(DarkNetTiny, self).__init__()
+        self.feat_dims = [256, 512, 1024]
+
+        # stride = 2
+        self.layer_1 = nn.Sequential(
+            Conv(3, 16, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type),
+            self.make_block(16, 16, nblocks=1, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
+        )
+        # stride = 4
+        self.layer_2 = nn.Sequential(
+            Conv(16, 32, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type),
+            self.make_block(32, 32, nblocks=2, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
+        )
+        # stride = 8
+        self.layer_3 = nn.Sequential(
+            Conv(32, 64, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type),
+            self.make_block(64, 64, nblocks=8, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
+        )
+        # stride = 16
+        self.layer_4 = nn.Sequential(
+            Conv(64, 128, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type),
+            self.make_block(128, 128, nblocks=8, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
+        )
+        # stride = 32
+        self.layer_5 = nn.Sequential(
+            Conv(128, 256, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type),
+            self.make_block(256, 256, nblocks=4, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
+        )
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(256, num_classes)
+
+
+    def make_block(self, in_dim, out_dim, nblocks=1, csp_block=False, act_type='silu', norm_type='BN'):
+        if csp_block:
+            return CSPBlock(in_dim, out_dim, expand_ratio=0.5, nblocks=nblocks,
+                            shortcut=True, act_type=act_type, norm_type=norm_type)
+        else:
+            return ResBlock(in_dim, out_dim, nblocks=nblocks,
+                            act_type=act_type, norm_type=norm_type)
+
+
+    def forward(self, x):
+        x = self.layer_1(x)
+        x = self.layer_2(x)
+        x = self.layer_3(x)
+        x = self.layer_4(x)
+        x = self.layer_5(x)
+
+        # [B, C, H, W] -> [B, C, 1, 1]
+        x = self.avgpool(x)
+        # [B, C, 1, 1] -> [B, C]
+        x = x.flatten(1)
+        x = self.fc(x)
+
+        return x
+
+
+def build_darknet(model_name='darknet53_silu', csp_block=False, pretrained=False): 
     """Constructs a darknet-53 model.
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = DarkNet53_SiLU(csp_block, act_type='silu', norm_type='BN')
+    if model_name in ['darknet53_silu', 'cspdarknet53_silu'] and not csp_block:
+        model = DarkNet53_SiLU(csp_block, act_type='silu', norm_type='BN')
+    elif model_name in ['darknet_tiny', 'cspdarknet_tiny'] and csp_block:
+        model = DarkNetTiny(csp_block, act_type='silu', norm_type='BN')
 
     return model
 
@@ -210,7 +273,7 @@ def build_darknet53_silu(csp_block=False, pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_darknet53_silu(csp_block=False)
+    model = build_darknet(model_name='cspdarknet_tiny', csp_block=True)
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
