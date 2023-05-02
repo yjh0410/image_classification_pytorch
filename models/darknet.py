@@ -199,7 +199,7 @@ class DarkNet53_SiLU(nn.Module):
 class DarkNetTiny(nn.Module):
     def __init__(self, csp_block=False, act_type='silu', norm_type='BN', num_classes=1000):
         super(DarkNetTiny, self).__init__()
-        self.feat_dims = [256, 512, 1024]
+        self.feat_dims = [64, 128, 256]
 
         # stride = 2
         self.layer_1 = nn.Sequential(
@@ -209,22 +209,22 @@ class DarkNetTiny(nn.Module):
         # stride = 4
         self.layer_2 = nn.Sequential(
             Conv(16, 32, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type),
-            self.make_block(32, 32, nblocks=2, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
+            self.make_block(32, 32, nblocks=1, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
         )
         # stride = 8
         self.layer_3 = nn.Sequential(
             Conv(32, 64, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type),
-            self.make_block(64, 64, nblocks=8, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
+            self.make_block(64, 64, nblocks=3, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
         )
         # stride = 16
         self.layer_4 = nn.Sequential(
             Conv(64, 128, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type),
-            self.make_block(128, 128, nblocks=8, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
+            self.make_block(128, 128, nblocks=3, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
         )
         # stride = 32
         self.layer_5 = nn.Sequential(
             Conv(128, 256, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type),
-            self.make_block(256, 256, nblocks=4, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
+            self.make_block(256, 256, nblocks=2, csp_block=csp_block, act_type=act_type, norm_type=norm_type)
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
