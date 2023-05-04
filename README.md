@@ -29,8 +29,8 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 | DarkNet-53-LReLU      | 120   | 224  |  75.7 | 14.2   | 41.6 M | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/darknet53.pth) |
 | DarkNet-53-SiLU       | 100   | 224  |  74.4 | 14.3   | 41.6 M | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/darknet53_silu.pth) |
 | CSP-DarkNet-53-SiLU   | 100   | 224  |  75.0 | 9.4    | 27.3 M | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/cspdarknet53_silu.pth) |
-| DarkNet-Tiny          |       |      |       | 0.9    | 2.8 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/darknet53_silu.pth) |
-
+| DarkNet-Tiny          |       |      |       | 0.5    | 1.6 M  |  |
+| CSPDarkNet-Tiny       |       |      |       | 0.4    | 1.3 M  |  |
 
 * YOLOv5's Backbone
 

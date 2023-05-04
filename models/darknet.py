@@ -195,7 +195,7 @@ class DarkNet53_SiLU(nn.Module):
         return x
 
 
-# DarkNet53
+# DarkNet-Tiny
 class DarkNetTiny(nn.Module):
     def __init__(self, csp_block=False, act_type='silu', norm_type='BN', num_classes=1000):
         super(DarkNetTiny, self).__init__()
@@ -273,7 +273,7 @@ def build_darknet(model_name='darknet53_silu', csp_block=False, pretrained=False
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_darknet(model_name='cspdarknet_tiny', csp_block=True)
+    model = build_darknet(model_name='darknet_tiny', csp_block=False)
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
