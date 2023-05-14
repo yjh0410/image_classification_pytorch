@@ -96,7 +96,7 @@ class ConvMixerBlock(nn.Module):
 
     def forward(self, x):
         x = x + self.spatial_mixer(x)
-        x = x + self.channel_mixer(x)
+        x = self.channel_mixer(x)
 
         return x
 
@@ -147,10 +147,9 @@ def build_convmixer(model_name='convmixer_large', pretrained=False):
     elif model_name == 'convmixer_medium':
         model = ConvMixer(patch_size=16, kernel_size=9, nblocks=32, d_model=512, act_type='silu', norm_type='BN')
     elif model_name == 'convmixer_small':
-        model = ConvMixer(patch_size=16, kernel_size=9, nblocks=32, d_model=384, act_type='silu', norm_type='BN')
+        model = ConvMixer(patch_size=16, kernel_size=9, nblocks=20, d_model=384, act_type='silu', norm_type='BN')
     elif model_name == 'convmixer_nano':
-        model = ConvMixer(patch_size=16, kernel_size=9, nblocks=32, d_model=128, act_type='silu', norm_type='BN')
-
+        model = ConvMixer(patch_size=16, kernel_size=9, nblocks=16, d_model=256, act_type='silu', norm_type='BN')
 
     return model
 
@@ -158,7 +157,7 @@ def build_convmixer(model_name='convmixer_large', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_convmixer(model_name='convmixer_huge')
+    model = build_convmixer(model_name='convmixer_small')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
