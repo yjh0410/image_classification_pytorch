@@ -233,13 +233,12 @@ if __name__ == '__main__':
     import time
     from thop import profile
     model = build_cspdarknet(model_name='cspdarknet_large')
-    x = torch.randn(1, 3, 256, 256)
+    x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
     t1 = time.time()
     print('Time: ', t1 - t0)
 
-    x = torch.randn(1, 3, 256, 256)
     print('==============================')
     flops, params = profile(model, inputs=(x, ), verbose=False)
     print('==============================')

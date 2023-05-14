@@ -72,3 +72,11 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 | ELAN-CSPNet-Large   | 100   | 224  |  75.8 | 10.5   | 19.6 M | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elan_cspnet_large.pth) |
 | ELAN-CSPNet-Huge    | 100   | 224  |       | 16.3   | 30.6 M |  |
 
+* ConvMixer
+|    Model          | Epoch | size | acc@1 | GFLOPs | Params |  Weight |
+|-------------------|-------|------|-------|--------|--------|---------|
+| ConvMixer-Nano    | 100   | 224  |       |  0.4   | 1.1 M  |  |
+| ConvMixer-Small   | 100   | 224  |       |  2.4   | 6.4 M  |  |
+| ConvMixer-Medium  | 100   | 224  |       |  4.0   | 10.7 M |  |
+| ConvMixer-Large   | 100   | 224  |       |  8.5   | 22.3 M |  |
+| ConvMixer-Huge    | 100   | 224  |       |  14.6  | 38.2 M |  |
