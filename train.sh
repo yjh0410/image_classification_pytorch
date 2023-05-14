@@ -22,7 +22,6 @@ python train.py --cuda \
                 --eval_epoch 5 \
                 --batch_size 128 \
                 --optimizer adamw \
-                --base_lr 4e-3 \
-                --min_lr 1e-6 \
-                -accu 32 \
+                --base_lr 0.01 \
+                --min_lr 5e-4 \
                 --ema \
