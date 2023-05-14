@@ -76,7 +76,7 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 |    Model          | Epoch | size | acc@1 | GFLOPs | Params |  Weight |
 |-------------------|-------|------|-------|--------|--------|---------|
 | ConvMixer-Nano    | 100   | 224  |       |  0.4   | 1.1 M  |  |
-| ConvMixer-Small   | 100   | 224  |       |  2.4   | 6.4 M  |  |
-| ConvMixer-Medium  | 100   | 224  |       |  4.0   | 10.7 M |  |
+| ConvMixer-Small   | 100   | 224  |       |  1.8   | 5.0 M  |  |
+| ConvMixer-Medium  | 100   | 224  |       |  3.5   | 9.5 M |  |
 | ConvMixer-Large   | 100   | 224  |       |  8.5   | 22.3 M |  |
-| ConvMixer-Huge    | 100   | 224  |       |  14.6  | 38.2 M |  |
+| ConvMixer-Huge    | 100   | 224  |       |  14.6  | 37.8 M |  |
