@@ -157,8 +157,8 @@ def build_convmixer(model_name='convmixer_large', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_convmixer(model_name='convmixer_huge')
-    x = torch.randn(1, 3, 224, 224)
+    model = build_convmixer(model_name='convmixer_nano')
+    x = torch.randn(1, 3, 640, 640)
     t0 = time.time()
     y = model(x)
     t1 = time.time()

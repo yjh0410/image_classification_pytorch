@@ -190,7 +190,7 @@ if __name__ == '__main__':
     import time
     from thop import profile
     model = build_elan_cspnet(model_name='elan_cspnet_nano')
-    x = torch.randn(1, 3, 224, 224)
+    x = torch.randn(1, 3, 640, 640)
     t0 = time.time()
     y = model(x)
     t1 = time.time()
