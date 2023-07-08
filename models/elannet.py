@@ -335,14 +335,16 @@ def build_elannet(model_name='elannet_large', pretrained=False):
     elif model_name == 'elannet_tiny':
         model = ELANNet(width=0.375, depth=0.34, act_type='silu', norm_type='BN')
     elif model_name == 'elannet_nano':
-        model = ELANNet(width=0.25, depth=0.34, act_type='lrelu', norm_type='BN')
+        model = ELANNet(width=0.25, depth=0.34, act_type='silu', norm_type='BN')
     elif model_name == 'elannet_pico':
-        model = ELANNet(width=0.25, depth=0.34, act_type='lrelu', norm_type='BN', depthwise=True)
+        model = ELANNet(width=0.25, depth=0.34, act_type='silu', norm_type='BN', depthwise=True)
+
     # P6 model
     elif model_name == 'elannet_p6_huge':
         model = ELANNet_P6(width=1.25, depth=1.34, act_type='silu', norm_type='BN')
     elif model_name == 'elannet_p6_large':
         model = ELANNet_P6(width=1.0, depth=1.0, act_type='silu', norm_type='BN')
+
     # P7 model
     elif model_name == 'elannet_p7_huge':
         model = ELANNet_P7(width=1.25, depth=1.34, act_type='silu', norm_type='BN')
