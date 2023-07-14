@@ -1,10 +1,6 @@
 import torch
 import torch.nn as nn
 
-model_urls = {
-    "elannet": "https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet.pth",
-}
-
 
 def get_activation(act_type=None):
     if act_type == 'relu':
