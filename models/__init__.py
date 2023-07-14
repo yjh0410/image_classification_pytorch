@@ -7,6 +7,7 @@ from .elannet import build_elannet
 from .elan_cspnet import build_elan_cspnet
 from .cspdarknet import build_cspdarknet
 from .convmixer import build_convmixer
+from .smnet import build_smnet
 
 
 def build_model(model_name='resnet18',
@@ -56,6 +57,10 @@ def build_model(model_name='resnet18',
             pretrained=pretrained
         )
 
+    elif model_name == 'smnet':
+        model = build_smnet(model_name, pretrained)
+
+        
     if resume is not None:
         print('keep training: ', resume)
         checkpoint = torch.load(resume, map_location='cpu')
