@@ -103,11 +103,9 @@ class SMBlock(nn.Module):
         x3 = self.sm2(x2)
         x4 = self.sm3(x3)
         out = torch.cat([x1, x2, x3, x4], dim=1)
-        out = self.channel_shuffle(out, groups=4)
-
         out = self.cv3(out)
 
-        return out
+        return self.channel_shuffle(out, groups=4)
 
 
 # Scale-Modulation Network
