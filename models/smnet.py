@@ -143,7 +143,6 @@ class DSBlock(nn.Module):
         self.sm1 = Conv(inter_dim, inter_dim, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
         self.sm2 = Conv(inter_dim, inter_dim, k=5, p=2, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
         self.sm3 = Conv(inter_dim, inter_dim, k=7, p=3, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
-        self.sm_aggregation = Conv(inter_dim*3, inter_dim*3, k=1, act_type=act_type, norm_type=norm_type)
 
 
     def channel_shuffle(self, x, groups):
@@ -174,7 +173,6 @@ class DSBlock(nn.Module):
         x1 = self.maxpool(x1)
         # branch-2
         x2 = torch.cat([self.sm1(x2), self.sm2(x2), self.sm3(x2)], dim=1)
-        x2 = self.sm_aggregation(x2)
         # channel shuffle
         out = torch.cat([x1, x2], dim=1)
         out = self.channel_shuffle(out, groups=4)
@@ -196,22 +194,22 @@ class ScaleModulationNet(nn.Module):
         # P2/4
         self.layer_2 = nn.Sequential(   
             DSBlock(16, act_type, norm_type, depthwise),             
-            SMBlock(32, None, act_type, norm_type, depthwise)
+            SMBlock(32, 32, act_type, norm_type, depthwise)
         )
         # P3/8
         self.layer_3 = nn.Sequential(
             DSBlock(32, act_type, norm_type, depthwise),             
-            SMBlock(64, None, act_type, norm_type, depthwise)
+            SMBlock(64, 64, act_type, norm_type, depthwise)
         )
         # P4/16
         self.layer_4 = nn.Sequential(
             DSBlock(64, act_type, norm_type, depthwise),             
-            SMBlock(128, None, act_type, norm_type, depthwise)
+            SMBlock(128, 128, act_type, norm_type, depthwise)
         )
         # P5/32
         self.layer_5 = nn.Sequential(
             DSBlock(128, act_type, norm_type, depthwise),             
-            SMBlock(256, None, act_type, norm_type, depthwise)
+            SMBlock(256, 256, act_type, norm_type, depthwise)
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
