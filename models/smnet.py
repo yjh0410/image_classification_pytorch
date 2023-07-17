@@ -80,7 +80,7 @@ class Conv(nn.Module):
         return self.convs(x)
 
 
-# -------------------------- Scale Modulations Block --------------------------
+# ---------------------------- Core Modules ----------------------------
 ## MultiHeadMixedConv
 class MultiHeadMixedConv(nn.Module):
     def __init__(self, in_dim, out_dim, num_heads=4, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
@@ -95,7 +95,7 @@ class MultiHeadMixedConv(nn.Module):
         ## Scale Modulation
         self.mixed_convs = nn.ModuleList([
             Conv(self.head_dim, self.head_dim, k=2*i+1, p=i, act_type=None, norm_type=None, depthwise=depthwise)
-            for i in range(1, num_heads+1)])
+            for i in range(num_heads)])
         ## Aggregation proj
         self.out_proj = Conv(self.head_dim*num_heads, out_dim, k=1, act_type=act_type, norm_type=norm_type)
 
@@ -119,13 +119,14 @@ class SMBlock(nn.Module):
         self.shortcut = shortcut
         self.inter_dim = in_dim // 2
         # -------------- Network parameters --------------
-        self.cv1 = Conv(self.inter_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
-        self.cv2 = Conv(self.inter_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
-        ## Scale Modulation
+        ## branch-1
+        self.cv1 = Conv(self.in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
+        self.cv2 = Conv(self.in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
+        ## branch-2
         self.smblocks = nn.Sequential(*[
             MultiHeadMixedConv(self.inter_dim, self.inter_dim, self.num_heads, self.shortcut, act_type, norm_type, depthwise)
             for _ in range(nblocks)])
-        ## Output proj
+        ## out proj
         self.out_proj = Conv(self.inter_dim*2, out_dim, k=1, act_type=act_type, norm_type=norm_type)
 
 
@@ -136,11 +137,10 @@ class SMBlock(nn.Module):
         Output:
             out: (Tensor) -> [B, C_out, H, W]
         """
-        x1, x2 = torch.chunk(x, 2, dim=1)
         # branch-1
-        x1 = self.cv1(x1)
+        x1 = self.cv1(x)
         # branch-2
-        x2 = self.smblocks(x2)
+        x2 = self.smblocks(self.cv2(x))
         # output
         out = torch.cat([x1, x2], dim=1)
         out = self.out_proj(out)
@@ -150,86 +150,78 @@ class SMBlock(nn.Module):
 
 ## DownSample Block
 class DSBlock(nn.Module):
-    def __init__(self, in_dim, act_type='silu', norm_type='BN', depthwise=False):
+    def __init__(self, in_dim, out_dim, act_type='silu', norm_type='BN', depthwise=False):
         super().__init__()
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.inter_dim = out_dim // 2
         # branch-1
-        self.maxpool = nn.MaxPool2d((2, 2), 2)
+        self.maxpool = nn.Sequential(
+            Conv(in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type),
+            nn.MaxPool2d((2, 2), 2)
+        )
         # branch-2
-        inter_dim = in_dim // 2
-        self.sm1 = Conv(inter_dim, inter_dim, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
-        self.sm2 = Conv(inter_dim, inter_dim, k=5, p=2, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
-        self.sm3 = Conv(inter_dim, inter_dim, k=7, p=3, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+        self.ds_conv = nn.Sequential(
+            Conv(in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type),
+            Conv(self.inter_dim, self.inter_dim, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+        ) 
 
-
-    def channel_shuffle(self, x, groups):
-        # type: (torch.Tensor, int) -> torch.Tensor
-        batchsize, num_channels, height, width = x.data.size()
-        per_group_dim = num_channels // groups
-
-        # reshape
-        x = x.view(batchsize, groups, per_group_dim, height, width)
-
-        x = torch.transpose(x, 1, 2).contiguous()
-
-        # flatten
-        x = x.view(batchsize, -1, height, width)
-
-        return x
-    
 
     def forward(self, x):
-        """
-        Input:
-            x: (Tensor) -> [B, C, H, W]
-        Output:
-            out: (Tensor) -> [B, 2C, H/2, W/2]
-        """
-        x1, x2 = torch.chunk(x, 2, dim=1)
         # branch-1
-        x1 = self.maxpool(x1)
+        x1 = self.maxpool(x)
         # branch-2
-        x2 = torch.cat([self.sm1(x2), self.sm2(x2), self.sm3(x2)], dim=1)
-        # channel shuffle
+        x2 = self.ds_conv(x)
+        # out-proj
         out = torch.cat([x1, x2], dim=1)
-        out = self.channel_shuffle(out, groups=4)
 
         return out
 
 
 # Scale-Modulation Network
 class ScaleModulationNet(nn.Module):
-    def __init__(self, num_heads=4, act_type='silu', norm_type='BN', depthwise=False, num_classes=1000):
+    def __init__(self, width=1.0, depth=1.0, num_classes=1000, act_type='silu', norm_type='BN', depthwise=False):
         super(ScaleModulationNet, self).__init__()
+        # ------------------ Basic parameters ------------------
+        self.base_dims = [64, 128, 256, 512, 1024]
+        self.base_nblocks = [3, 6, 9, 3]
+        self.feat_dims = [round(dim * width) for dim in self.base_dims]
+        self.nblocks = [round(nblock * depth) for nblock in self.base_nblocks]
+        self.shortcut = True
+        self.num_heads = 4
+        self.act_type = act_type
+        self.norm_type = norm_type
+        self.depthwise = depthwise
         
-        # P1/2
+        # ------------------ Network parameters ------------------
+        ## P1/2
         self.layer_1 = nn.Sequential(
-            Conv(3, 24, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type),
-            Conv(24, 24, k=3, p=1, act_type=act_type, norm_type=norm_type, depthwise=depthwise),
+            Conv(3, self.feat_dims[0], k=3, p=1, s=2, act_type=self.act_type, norm_type=self.norm_type),
+            Conv(self.feat_dims[0], self.feat_dims[0], k=3, p=1, act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
         )
-
-        # P2/4
+        ## P2/4
         self.layer_2 = nn.Sequential(   
-            DSBlock(24, act_type, norm_type, depthwise),             
-            SMBlock(48, 48, nblocks=1, num_heads=num_heads, shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+            DSBlock(self.feat_dims[0], self.feat_dims[1], self.act_type, self.norm_type, self.depthwise),             
+            SMBlock(self.feat_dims[1], self.feat_dims[1], self.nblocks[0], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
         )
-        # P3/8
+        ## P3/8
         self.layer_3 = nn.Sequential(
-            DSBlock(48, act_type, norm_type, depthwise),             
-            SMBlock(96, 96, nblocks=3, num_heads=num_heads, shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+            DSBlock(self.feat_dims[1], self.feat_dims[2], self.act_type, self.norm_type, self.depthwise),             
+            SMBlock(self.feat_dims[2], self.feat_dims[2], self.nblocks[1], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
         )
-        # P4/16
+        ## P4/16
         self.layer_4 = nn.Sequential(
-            DSBlock(96, act_type, norm_type, depthwise),             
-            SMBlock(192, 192, nblocks=3, num_heads=num_heads, shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+            DSBlock(self.feat_dims[2], self.feat_dims[3], self.act_type, self.norm_type, self.depthwise),             
+            SMBlock(self.feat_dims[3], self.feat_dims[3], self.nblocks[2], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
         )
-        # P5/32
+        ## P5/32
         self.layer_5 = nn.Sequential(
-            DSBlock(192, act_type, norm_type, depthwise),             
-            SMBlock(384, 384, nblocks=2, num_heads=num_heads, shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+            DSBlock(self.feat_dims[3], self.feat_dims[4], self.act_type, self.norm_type, self.depthwise),             
+            SMBlock(self.feat_dims[4], self.feat_dims[4], self.nblocks[3], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(384, num_classes)
+        self.fc = nn.Linear(self.feat_dims[4], num_classes)
 
 
     def forward(self, x):
@@ -250,8 +242,20 @@ class ScaleModulationNet(nn.Module):
 
 # build ELAN-Net
 def build_smnet(model_name='smnet', pretrained=False): 
-    if model_name == 'smnet':
-        model = ScaleModulationNet(num_heads=4, act_type='silu', norm_type='BN', depthwise=True)
+    if model_name == 'smnet_huge':
+        model = ScaleModulationNet(width=1.25, depth=1.34, act_type='silu', norm_type='BN')
+    elif model_name == 'smnet_large':
+        model = ScaleModulationNet(width=1.0, depth=1.0, act_type='silu', norm_type='BN')
+    elif model_name == 'smnet_medium':
+        model = ScaleModulationNet(width=0.75, depth=0.67, act_type='silu', norm_type='BN')
+    elif model_name == 'smnet_small':
+        model = ScaleModulationNet(width=0.5, depth=0.34, act_type='silu', norm_type='BN')
+    elif model_name == 'smnet_tiny':
+        model = ScaleModulationNet(width=0.375, depth=0.34, act_type='silu', norm_type='BN')
+    elif model_name == 'smnet_nano':
+        model = ScaleModulationNet(width=0.25, depth=0.34, act_type='silu', norm_type='BN')
+    elif model_name == 'smnet_pico':
+        model = ScaleModulationNet(width=0.25, depth=0.34, act_type='silu', norm_type='BN', depthwise=True)
 
     return model
 
@@ -259,7 +263,7 @@ def build_smnet(model_name='smnet', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_smnet(model_name='smnet')
+    model = build_smnet(model_name='smnet_pico')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
