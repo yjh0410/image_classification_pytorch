@@ -83,18 +83,19 @@ class Conv(nn.Module):
 # ---------------------------- Core Modules ----------------------------
 ## MultiHeadMixedConv
 class MultiHeadMixedConv(nn.Module):
-    def __init__(self, in_dim, out_dim, num_heads=4, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
+    def __init__(self, in_dim, out_dim, num_heads=4, stride=1, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
         super().__init__()
         # -------------- Basic parameters --------------
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.num_heads = num_heads
         self.head_dim = in_dim // num_heads
+        self.stride = stride
         self.shortcut = shortcut
         # -------------- Network parameters --------------
         ## Scale Modulation
         self.mixed_convs = nn.ModuleList([
-            Conv(self.head_dim, self.head_dim, k=2*i+1, p=i, act_type=None, norm_type=None, depthwise=depthwise)
+            Conv(self.head_dim, self.head_dim, k=2*i+1, p=i, s=stride, act_type=None, norm_type=None, depthwise=depthwise)
             for i in range(num_heads)])
         ## Aggregation proj
         self.out_proj = Conv(self.head_dim*num_heads, out_dim, k=1, act_type=act_type, norm_type=norm_type)
@@ -106,7 +107,6 @@ class MultiHeadMixedConv(nn.Module):
 
         return x + ys if self.shortcut else ys
     
-
 ## Scale Modulation Block
 class SMBlock(nn.Module):
     def __init__(self, in_dim, out_dim, nblocks=1, num_heads=4, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
@@ -124,7 +124,7 @@ class SMBlock(nn.Module):
         self.cv2 = Conv(self.in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
         ## branch-2
         self.smblocks = nn.Sequential(*[
-            MultiHeadMixedConv(self.inter_dim, self.inter_dim, self.num_heads, self.shortcut, act_type, norm_type, depthwise)
+            MultiHeadMixedConv(self.inter_dim, self.inter_dim, self.num_heads, 1, self.shortcut, act_type, norm_type, depthwise)
             for _ in range(nblocks)])
         ## out proj
         self.out_proj = Conv(self.inter_dim*2, out_dim, k=1, act_type=act_type, norm_type=norm_type)
@@ -147,14 +147,14 @@ class SMBlock(nn.Module):
 
         return out
 
-
 ## DownSample Block
 class DSBlock(nn.Module):
-    def __init__(self, in_dim, out_dim, act_type='silu', norm_type='BN', depthwise=False):
+    def __init__(self, in_dim, out_dim, num_heads=4, act_type='silu', norm_type='BN', depthwise=False):
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.inter_dim = out_dim // 2
+        self.num_heads = num_heads
         # branch-1
         self.maxpool = nn.Sequential(
             Conv(in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type),
@@ -163,7 +163,7 @@ class DSBlock(nn.Module):
         # branch-2
         self.ds_conv = nn.Sequential(
             Conv(in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type),
-            Conv(self.inter_dim, self.inter_dim, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+            MultiHeadMixedConv(self.inter_dim, self.inter_dim, self.num_heads, 2, False, act_type, norm_type, depthwise)
         ) 
 
 
@@ -201,22 +201,22 @@ class ScaleModulationNet(nn.Module):
         )
         ## P2/4
         self.layer_2 = nn.Sequential(   
-            DSBlock(self.feat_dims[0], self.feat_dims[1], self.act_type, self.norm_type, self.depthwise),             
+            DSBlock(self.feat_dims[0], self.feat_dims[1], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
             SMBlock(self.feat_dims[1], self.feat_dims[1], self.nblocks[0], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
         )
         ## P3/8
         self.layer_3 = nn.Sequential(
-            DSBlock(self.feat_dims[1], self.feat_dims[2], self.act_type, self.norm_type, self.depthwise),             
+            DSBlock(self.feat_dims[1], self.feat_dims[2], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
             SMBlock(self.feat_dims[2], self.feat_dims[2], self.nblocks[1], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
         )
         ## P4/16
         self.layer_4 = nn.Sequential(
-            DSBlock(self.feat_dims[2], self.feat_dims[3], self.act_type, self.norm_type, self.depthwise),             
+            DSBlock(self.feat_dims[2], self.feat_dims[3], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
             SMBlock(self.feat_dims[3], self.feat_dims[3], self.nblocks[2], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
         )
         ## P5/32
         self.layer_5 = nn.Sequential(
-            DSBlock(self.feat_dims[3], self.feat_dims[4], self.act_type, self.norm_type, self.depthwise),             
+            DSBlock(self.feat_dims[3], self.feat_dims[4], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
             SMBlock(self.feat_dims[4], self.feat_dims[4], self.nblocks[3], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
         )
 
