@@ -57,7 +57,7 @@ def build_model(model_name='resnet18',
             pretrained=pretrained
         )
 
-    elif model_name == 'smnet':
+    if model_name in ['smnet_pico', 'smnet_nano', 'smnet_tiny', 'smnet_small', 'smnet_medium', 'smnet_large', 'smnet_huge']:
         model = build_smnet(model_name, pretrained)
 
         
