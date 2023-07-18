@@ -251,7 +251,7 @@ class ScaleModulationNet(nn.Module):
         super(ScaleModulationNet, self).__init__()
         # ------------------ Basic parameters ------------------
         self.base_dims = [64, 128, 256, 512, 1024]
-        self.base_nblocks = [3, 9, 9, 3]
+        self.base_nblocks = [3, 6, 6, 3]
         self.feat_dims = [round(dim * width) for dim in self.base_dims]
         self.nblocks = [round(nblock * depth) for nblock in self.base_nblocks]
         self.shortcut = True
