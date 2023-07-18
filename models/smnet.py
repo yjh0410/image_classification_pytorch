@@ -77,31 +77,109 @@ class Conv(nn.Module):
 
 
 # ---------------------------- Core Modules ----------------------------
-## MultiHeadMixedConv
+## Multi-head Mixed Conv (MHMC)
 class MultiHeadMixedConv(nn.Module):
-    def __init__(self, in_dim, out_dim, num_heads=4, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
+    def __init__(self, in_dim, out_dim, num_heads=4, depthwise=False):
         super().__init__()
         # -------------- Basic parameters --------------
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.num_heads = num_heads
         self.head_dim = in_dim // num_heads
-        self.shortcut = shortcut
         # -------------- Network parameters --------------
         ## Scale Modulation
         self.mixed_convs = nn.ModuleList([
             Conv(self.head_dim, self.head_dim, k=2*i+1, p=i, act_type=None, norm_type=None, depthwise=depthwise)
             for i in range(num_heads)])
-        ## Aggregation proj
-        self.out_proj = Conv(self.head_dim*num_heads, out_dim, k=1, act_type=act_type, norm_type=norm_type)
 
     def forward(self, x):
         xs = torch.chunk(x, self.num_heads, dim=1)
         ys = [mixed_conv(x_h) for x_h, mixed_conv in zip(xs, self.mixed_convs)]
-        ys = self.out_proj(torch.cat(ys, dim=1))
+        ys = torch.cat(ys, dim=1)
 
-        return x + ys if self.shortcut else ys
-    
+        return ys
+
+## Scale-aware Aggregator (SAA)
+class ScaleAwareAggregator(nn.Module):
+    def __init__(self, in_dim, out_dim, num_heads, act_type='silu', norm_type='BN', depthwise=False):
+        super().__init__()
+        assert in_dim == out_dim
+        # -------------- Basic parameters --------------
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.num_heads = num_heads
+        self.num_groups = in_dim // num_heads
+        # -------------- Network parameters --------------
+        ## Aggregation 1x1 Conv
+        self.aggr_conv = nn.ModuleList()
+        for _ in range(self.num_groups):
+            self.aggr_conv.append(nn.Conv2d(num_heads, num_heads, kernel_size=1))
+        ## Out-proj
+        self.out_proj = Conv(in_dim, out_dim, k=1, act_type=act_type, norm_type=norm_type)
+
+
+    def channel_shuffle(self, x, groups):
+        # type: (torch.Tensor, int) -> torch.Tensor
+        batchsize, num_channels, height, width = x.data.size()
+        channels_per_group = num_channels // groups
+
+        # reshape
+        x = x.view(batchsize, groups,
+                channels_per_group, height, width)
+
+        x = torch.transpose(x, 1, 2).contiguous()
+
+        # flatten
+        x = x.view(batchsize, -1, height, width)
+
+        return x
+
+
+    def forward(self, x):
+        # channel shuffle
+        x = self.channel_shuffle(x, groups=self.num_heads)
+        # aggregation conv
+        xs = torch.chunk(x, self.num_groups, dim=1)
+        xs = [conv(xh) for xh, conv in zip(xs, self.aggr_conv)]
+        xs = torch.cat(xs, dim=1)
+        # out-proj
+        ys = self.out_proj(xs)
+
+        return ys
+
+## Scale Modulation Module (SAM)
+class ScaleAwareModule(nn.Module):
+    def __init__(self, in_dim, out_dim, num_heads=4, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
+        super().__init__()
+        # -------------- Basic parameters --------------
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.num_heads = num_heads
+        self.inter_dim = in_dim // 2
+        self.shortcut = shortcut
+        # -------------- Network parameters --------------
+        ## In-proj
+        self.cv1 = Conv(self.in_dim, self.in_dim, k=1, act_type=act_type, norm_type=norm_type)
+        self.cv2 = Conv(self.in_dim, self.in_dim, k=1, act_type=act_type, norm_type=norm_type)
+        ## MHMC & SAA
+        self.mhmc = MultiHeadMixedConv(self.in_dim, self.in_dim, self.num_heads, depthwise)
+        self.saa = ScaleAwareAggregator(self.in_dim, self.in_dim, self.num_heads, act_type, norm_type, depthwise)
+
+
+    def forward(self, x):
+        # branch-1
+        x1 = self.cv1(x)
+        # branch-2
+        x2 = self.cv2(x)
+        x2 = self.mhmc(x2)
+        x2 = self.saa(x2)
+        # output
+        out = x1 * x2
+
+        return out + x if self.shortcut else out
+
+
+# ---------------------------- Base Blocks ----------------------------
 ## Scale Modulation Block
 class SMBlock(nn.Module):
     def __init__(self, in_dim, out_dim, nblocks=1, num_heads=4, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
@@ -119,19 +197,13 @@ class SMBlock(nn.Module):
         self.cv2 = Conv(self.in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
         ## branch-2
         self.smblocks = nn.Sequential(*[
-            MultiHeadMixedConv(self.inter_dim, self.inter_dim, self.num_heads, self.shortcut, act_type, norm_type, depthwise)
+            ScaleAwareModule(self.inter_dim, self.inter_dim, self.num_heads, self.shortcut, act_type, norm_type, depthwise)
             for _ in range(nblocks)])
         ## out proj
         self.out_proj = Conv(self.inter_dim*2, out_dim, k=1, act_type=act_type, norm_type=norm_type)
 
 
     def forward(self, x):
-        """
-        Input:
-            x: (Tensor) -> [B, C_in, H, W]
-        Output:
-            out: (Tensor) -> [B, C_out, H, W]
-        """
         # branch-1
         x1 = self.cv1(x)
         # branch-2
@@ -173,7 +245,7 @@ class DSBlock(nn.Module):
         return out
 
 
-# Scale-Modulation Network
+# ---------------------------- Scale-Modulation Network ----------------------------
 class ScaleModulationNet(nn.Module):
     def __init__(self, width=1.0, depth=1.0, num_classes=1000, act_type='silu', norm_type='BN', depthwise=False):
         super(ScaleModulationNet, self).__init__()
