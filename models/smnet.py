@@ -330,7 +330,7 @@ def build_smnet(model_name='smnet', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_smnet(model_name='smnet_nano')
+    model = build_smnet(model_name='smnet_small')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)

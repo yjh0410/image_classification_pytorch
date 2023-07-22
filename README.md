@@ -81,3 +81,11 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 | ConvMixer-Medium  | 100   | 224  |       |  3.5   | 9.5 M |  |
 | ConvMixer-Large   | 100   | 224  |       |  8.5   | 22.3 M |  |
 | ConvMixer-Huge    | 100   | 224  |       |  14.6  | 37.8 M |  |
+
+* SMNet
+|    Model    | Epoch | size | acc@1 | GFLOPs | Params |  Weight |
+|-------------|-------|------|-------|--------|--------|---------|
+| SMNet-Pico  | 100   | 224  |  58.8 |  0.2   | 0.6 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/smnet_pico.pth) |
+| SMNet-Nano  | 100   | 224  |  60.4 |  0.3   | 0.9 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/smnet_nano.pth) |
+| SMNet-Tiny  | 100   | 224  |       |  0.7   | 1.8 M  |  |
+| SMNet-Small | 100   | 224  |       |  1.2   | 3.0 M  |  |
