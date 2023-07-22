@@ -79,109 +79,35 @@ class Conv(nn.Module):
 # ---------------------------- Core Modules ----------------------------
 ## Multi-head Mixed Conv (MHMC)
 class MultiHeadMixedConv(nn.Module):
-    def __init__(self, in_dim, out_dim, num_heads=4, depthwise=False):
-        super().__init__()
-        # -------------- Basic parameters --------------
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-        self.num_heads = num_heads
-        self.head_dim = in_dim // num_heads
-        # -------------- Network parameters --------------
-        ## Scale Modulation
-        self.mixed_convs = nn.ModuleList([
-            Conv(self.head_dim, self.head_dim, k=2*i+1, p=i, act_type=None, norm_type=None, depthwise=depthwise)
-            for i in range(num_heads)])
-
-    def forward(self, x):
-        xs = torch.chunk(x, self.num_heads, dim=1)
-        ys = [mixed_conv(x_h) for x_h, mixed_conv in zip(xs, self.mixed_convs)]
-        ys = torch.cat(ys, dim=1)
-
-        return ys
-
-## Scale-aware Aggregator (SAA)
-class ScaleAwareAggregator(nn.Module):
-    def __init__(self, in_dim, out_dim, num_heads, act_type='silu', norm_type='BN', depthwise=False):
-        super().__init__()
-        assert in_dim == out_dim
-        # -------------- Basic parameters --------------
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-        self.num_heads = num_heads
-        self.num_groups = in_dim // num_heads
-        # -------------- Network parameters --------------
-        ## Aggregation 1x1 Conv
-        self.aggr_conv = nn.ModuleList()
-        for _ in range(self.num_groups):
-            self.aggr_conv.append(nn.Conv2d(num_heads, num_heads, kernel_size=1))
-        ## Out-proj
-        self.out_proj = Conv(in_dim, out_dim, k=1, act_type=act_type, norm_type=norm_type)
-
-
-    def channel_shuffle(self, x, groups):
-        # type: (torch.Tensor, int) -> torch.Tensor
-        batchsize, num_channels, height, width = x.data.size()
-        channels_per_group = num_channels // groups
-
-        # reshape
-        x = x.view(batchsize, groups,
-                channels_per_group, height, width)
-
-        x = torch.transpose(x, 1, 2).contiguous()
-
-        # flatten
-        x = x.view(batchsize, -1, height, width)
-
-        return x
-
-
-    def forward(self, x):
-        # channel shuffle
-        x = self.channel_shuffle(x, groups=self.num_heads)
-        # aggregation conv
-        xs = torch.chunk(x, self.num_groups, dim=1)
-        xs = [conv(xh) for xh, conv in zip(xs, self.aggr_conv)]
-        xs = torch.cat(xs, dim=1)
-        # out-proj
-        ys = self.out_proj(xs)
-
-        return ys
-
-## Scale Modulation Module (SAM)
-class ScaleAwareModule(nn.Module):
     def __init__(self, in_dim, out_dim, num_heads=4, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
         super().__init__()
         # -------------- Basic parameters --------------
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.num_heads = num_heads
-        self.inter_dim = in_dim // 2
         self.shortcut = shortcut
+        self.head_dim = in_dim // num_heads
         # -------------- Network parameters --------------
-        ## In-proj
-        self.cv1 = Conv(self.in_dim, self.in_dim, k=1, act_type=act_type, norm_type=norm_type)
-        self.cv2 = Conv(self.in_dim, self.in_dim, k=1, act_type=act_type, norm_type=norm_type)
-        ## MHMC & SAA
-        self.mhmc = MultiHeadMixedConv(self.in_dim, self.in_dim, self.num_heads, depthwise)
-        self.saa = ScaleAwareAggregator(self.in_dim, self.in_dim, self.num_heads, act_type, norm_type, depthwise)
+        ## Scale Modulation
+        self.mixed_convs = nn.ModuleList()
+        for i in range(num_heads):
+            self.mixed_convs.append(
+                Conv(self.head_dim, self.head_dim, k=2*i+1, p=i, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+            )
+        ## Out-proj
+        self.out_proj = Conv(in_dim, out_dim, k=1, act_type=act_type, norm_type=norm_type)
 
 
     def forward(self, x):
-        # branch-1
-        x1 = self.cv1(x)
-        # branch-2
-        x2 = self.cv2(x)
-        x2 = self.mhmc(x2)
-        x2 = self.saa(x2)
-        # output
-        out = x1 * x2
+        xs = torch.chunk(x, self.num_heads, dim=1)
+        ys = [mixed_conv(x_h) for x_h, mixed_conv in zip(xs, self.mixed_convs)]
+        out = self.out_proj(torch.cat(ys, dim=1))
 
         return out + x if self.shortcut else out
 
-
 # ---------------------------- Base Blocks ----------------------------
-## Scale Modulation Block
-class SMBlock(nn.Module):
+## Mixed Convolution Block
+class MCBlock(nn.Module):
     def __init__(self, in_dim, out_dim, nblocks=1, num_heads=4, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
         super().__init__()
         # -------------- Basic parameters --------------
@@ -197,7 +123,7 @@ class SMBlock(nn.Module):
         self.cv2 = Conv(self.in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
         ## branch-2
         self.smblocks = nn.Sequential(*[
-            ScaleAwareModule(self.inter_dim, self.inter_dim, self.num_heads, self.shortcut, act_type, norm_type, depthwise)
+            MultiHeadMixedConv(self.inter_dim, self.inter_dim, self.num_heads, self.shortcut, act_type, norm_type, depthwise)
             for _ in range(nblocks)])
         ## out proj
         self.out_proj = Conv(self.inter_dim*2, out_dim, k=1, act_type=act_type, norm_type=norm_type)
@@ -251,7 +177,7 @@ class ScaleModulationNet(nn.Module):
         super(ScaleModulationNet, self).__init__()
         # ------------------ Basic parameters ------------------
         self.base_dims = [64, 128, 256, 512, 1024]
-        self.base_nblocks = [3, 6, 6, 3]
+        self.base_nblocks = [3, 6, 9, 3]
         self.feat_dims = [round(dim * width) for dim in self.base_dims]
         self.nblocks = [round(nblock * depth) for nblock in self.base_nblocks]
         self.shortcut = True
@@ -268,23 +194,23 @@ class ScaleModulationNet(nn.Module):
         )
         ## P2/4
         self.layer_2 = nn.Sequential(   
-            DSBlock(self.feat_dims[0], self.feat_dims[1], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
-            SMBlock(self.feat_dims[1], self.feat_dims[1], self.nblocks[0], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
+            Conv(self.feat_dims[0], self.feat_dims[1], k=3, p=1, s=2, act_type=self.act_type, norm_type=self.norm_type),
+            MCBlock(self.feat_dims[1], self.feat_dims[1], self.nblocks[0], self.num_heads, True, self.act_type, self.norm_type, self.depthwise)
         )
         ## P3/8
         self.layer_3 = nn.Sequential(
             DSBlock(self.feat_dims[1], self.feat_dims[2], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
-            SMBlock(self.feat_dims[2], self.feat_dims[2], self.nblocks[1], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
+            MCBlock(self.feat_dims[2], self.feat_dims[2], self.nblocks[1], self.num_heads, True, self.act_type, self.norm_type, self.depthwise)
         )
         ## P4/16
         self.layer_4 = nn.Sequential(
             DSBlock(self.feat_dims[2], self.feat_dims[3], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
-            SMBlock(self.feat_dims[3], self.feat_dims[3], self.nblocks[2], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
+            MCBlock(self.feat_dims[3], self.feat_dims[3], self.nblocks[2], self.num_heads, True, self.act_type, self.norm_type, self.depthwise)
         )
         ## P5/32
         self.layer_5 = nn.Sequential(
             DSBlock(self.feat_dims[3], self.feat_dims[4], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
-            SMBlock(self.feat_dims[4], self.feat_dims[4], self.nblocks[3], self.num_heads, self.shortcut, self.act_type, self.norm_type, self.depthwise)
+            MCBlock(self.feat_dims[4], self.feat_dims[4], self.nblocks[3], self.num_heads, True, self.act_type, self.norm_type, self.depthwise)
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -330,7 +256,7 @@ def build_smnet(model_name='smnet', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_smnet(model_name='smnet_small')
+    model = build_smnet(model_name='smnet_pico')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
