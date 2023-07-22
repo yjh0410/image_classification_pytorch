@@ -7,7 +7,7 @@ from .elannet import build_elannet
 from .elan_cspnet import build_elan_cspnet
 from .cspdarknet import build_cspdarknet
 from .convmixer import build_convmixer
-from .smnet import build_smnet
+from .mcnet import build_mcnet
 
 
 def build_model(model_name='resnet18',
@@ -57,8 +57,8 @@ def build_model(model_name='resnet18',
             pretrained=pretrained
         )
 
-    if model_name in ['smnet_pico', 'smnet_nano', 'smnet_tiny', 'smnet_small', 'smnet_medium', 'smnet_large', 'smnet_huge']:
-        model = build_smnet(model_name, pretrained)
+    if model_name in ['mcnet_pico', 'mcnet_nano', 'mcnet_tiny', 'mcnet_small', 'mcnet_medium', 'mcnet_large', 'mcnet_huge']:
+        model = build_mcnet(model_name, pretrained)
 
         
     if resume is not None:

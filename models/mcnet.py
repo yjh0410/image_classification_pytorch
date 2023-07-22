@@ -172,9 +172,9 @@ class DSBlock(nn.Module):
 
 
 # ---------------------------- Scale-Modulation Network ----------------------------
-class ScaleModulationNet(nn.Module):
+class MixedConvNet(nn.Module):
     def __init__(self, width=1.0, depth=1.0, num_classes=1000, act_type='silu', norm_type='BN', depthwise=False):
-        super(ScaleModulationNet, self).__init__()
+        super(MixedConvNet, self).__init__()
         # ------------------ Basic parameters ------------------
         self.base_dims = [64, 128, 256, 512, 1024]
         self.base_nblocks = [3, 6, 9, 3]
@@ -234,21 +234,21 @@ class ScaleModulationNet(nn.Module):
 
 
 # build ELAN-Net
-def build_smnet(model_name='smnet', pretrained=False): 
-    if model_name == 'smnet_huge':
-        model = ScaleModulationNet(width=1.25, depth=1.34, act_type='silu', norm_type='BN')
-    elif model_name == 'smnet_large':
-        model = ScaleModulationNet(width=1.0, depth=1.0, act_type='silu', norm_type='BN')
-    elif model_name == 'smnet_medium':
-        model = ScaleModulationNet(width=0.75, depth=0.67, act_type='silu', norm_type='BN')
-    elif model_name == 'smnet_small':
-        model = ScaleModulationNet(width=0.5, depth=0.34, act_type='silu', norm_type='BN')
-    elif model_name == 'smnet_tiny':
-        model = ScaleModulationNet(width=0.375, depth=0.34, act_type='silu', norm_type='BN')
-    elif model_name == 'smnet_nano':
-        model = ScaleModulationNet(width=0.25, depth=0.34, act_type='silu', norm_type='BN')
-    elif model_name == 'smnet_pico':
-        model = ScaleModulationNet(width=0.25, depth=0.34, act_type='silu', norm_type='BN', depthwise=True)
+def build_mcnet(model_name='mcnet', pretrained=False): 
+    if model_name == 'mcnet_huge':
+        model = MixedConvNet(width=1.25, depth=1.34, act_type='silu', norm_type='BN')
+    elif model_name == 'mcnet_large':
+        model = MixedConvNet(width=1.0, depth=1.0, act_type='silu', norm_type='BN')
+    elif model_name == 'mcnet_medium':
+        model = MixedConvNet(width=0.75, depth=0.67, act_type='silu', norm_type='BN')
+    elif model_name == 'mcnet_small':
+        model = MixedConvNet(width=0.5, depth=0.34, act_type='silu', norm_type='BN')
+    elif model_name == 'mcnet_tiny':
+        model = MixedConvNet(width=0.375, depth=0.34, act_type='silu', norm_type='BN')
+    elif model_name == 'mcnet_nano':
+        model = MixedConvNet(width=0.25, depth=0.34, act_type='silu', norm_type='BN')
+    elif model_name == 'mcnet_pico':
+        model = MixedConvNet(width=0.25, depth=0.34, act_type='silu', norm_type='BN', depthwise=True)
 
     return model
 
@@ -256,7 +256,7 @@ def build_smnet(model_name='smnet', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_smnet(model_name='smnet_pico')
+    model = build_mcnet(model_name='mcnet_pico')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
