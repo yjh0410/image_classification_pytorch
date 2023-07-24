@@ -85,7 +85,7 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 * MCNet
 |    Model    | Epoch | size | acc@1 | GFLOPs | Params |  Weight |
 |-------------|-------|------|-------|--------|--------|---------|
-| MCNet-Pico  | 100   | 224  |  58.8 |  0.2   | 0.6 M  |  |
-| MCNet-Nano  | 100   | 224  |  60.4 |  0.3   | 0.9 M  |  |
+| MCNet-Pico  | 100   | 224  |  58.4 |  0.2   | 0.6 M  |  |
+| MCNet-Nano  | 100   | 224  |       |  0.3   | 0.9 M  |  |
 | MCNet-Tiny  | 100   | 224  |       |  0.7   | 1.8 M  |  |
 | MCNet-Small | 100   | 224  |       |  1.2   | 3.0 M  |  |
