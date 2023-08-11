@@ -59,34 +59,8 @@ class Conv(nn.Module):
     def forward(self, x):
         return self.convs(x)
 
-# #YOLO-style BottleNeck
-class YoloBottleneck(nn.Module):
-    def __init__(self,
-                 in_dim,
-                 out_dim,
-                 kernel_sizes :List[int] = [3, 3],
-                 expand_ratio :float     = 0.5,
-                 shortcut     :bool      = False,
-                 act_type     :str       = 'silu',
-                 norm_type    :str       = 'BN',
-                 depthwise    :bool      = False):
-        super(YoloBottleneck, self).__init__()
-        # ------------------ Basic parameters ------------------
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-        self.inter_dim = int(out_dim * expand_ratio)
-        self.shortcut = shortcut and in_dim == out_dim
-        # ------------------ Network parameters ------------------
-        self.cv1 = Conv(in_dim, self.inter_dim, k=kernel_sizes[0], p=kernel_sizes[0]//2, norm_type=norm_type, act_type=act_type, depthwise=depthwise)
-        self.cv2 = Conv(self.inter_dim, out_dim, k=kernel_sizes[1], p=kernel_sizes[1]//2, norm_type=norm_type, act_type=act_type, depthwise=depthwise)
-
-    def forward(self, x):
-        h = self.cv2(self.cv1(x))
-
-        return x + h if self.shortcut else h
-
-## ELAN Stage of Backbone
-class ELAN_Stage(nn.Module):
+## ELAN Block
+class ELANBlock(nn.Module):
     def __init__(self, in_dim, out_dim, expand_ratio :float=0.5, branch_depth :int=1, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
         super().__init__()
         # ----------- Basic Parameters -----------
@@ -95,26 +69,28 @@ class ELAN_Stage(nn.Module):
         self.inter_dim = round(in_dim * expand_ratio)
         self.expand_ratio = expand_ratio
         self.branch_depth = branch_depth
+        self.shortcut = shortcut
         # ----------- Network Parameters -----------
         self.cv1 = Conv(in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
         self.cv2 = Conv(in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
         self.cv3 = nn.Sequential(*[
-            YoloBottleneck(self.inter_dim, self.inter_dim, [1, 3], 1.0, shortcut, act_type, norm_type, depthwise)
+            Conv(self.inter_dim, self.inter_dim, k=3, p=1, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
             for _ in range(branch_depth)
         ])
         self.cv4 = nn.Sequential(*[
-            YoloBottleneck(self.inter_dim, self.inter_dim, [1, 3], 1.0, shortcut, act_type, norm_type, depthwise)
+            Conv(self.inter_dim, self.inter_dim, k=3, p=1, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
             for _ in range(branch_depth)
         ])
-        ## output
-        self.out_conv = Conv(self.inter_dim*4, out_dim, k=1, act_type=act_type, norm_type=norm_type)
+        self.out = Conv(self.inter_dim*4, out_dim, k=1, act_type=act_type, norm_type=norm_type)
 
     def forward(self, x):
         x1 = self.cv1(x)
         x2 = self.cv2(x)
-        x3 = self.cv3(x2)
-        x4 = self.cv4(x3)
-        out = self.out_conv(torch.cat([x1, x2, x3, x4], dim=1))
+        x3 = self.cv3(x2) + x2 if self.shortcut else self.cv3(x2)
+        x4 = self.cv4(x3) + x3 if self.shortcut else self.cv4(x3)
+
+        # [B, C, H, W] -> [B, 2C, H, W]
+        out = self.out(torch.cat([x1, x2, x3, x4], dim=1))
 
         return out
     
@@ -122,23 +98,20 @@ class ELAN_Stage(nn.Module):
 class DSBlock(nn.Module):
     def __init__(self, in_dim, out_dim, act_type='silu', norm_type='BN', depthwise=False):
         super().__init__()
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-        # branch-1
-        self.maxpool = nn.MaxPool2d((2, 2), 2)
-        # branch-2
-        self.ds_conv = Conv(in_dim, in_dim, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
-        # output
-        self.out_conv = Conv(in_dim*2, out_dim, k=1, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
-
+        inter_dim = out_dim // 2
+        self.branch_1 = nn.Sequential(
+            nn.MaxPool2d((2, 2), 2),
+            Conv(in_dim, inter_dim, k=1, act_type=act_type, norm_type=norm_type)
+        )
+        self.branch_2 = nn.Sequential(
+            Conv(in_dim, inter_dim, k=1, act_type=act_type, norm_type=norm_type),
+            Conv(inter_dim, inter_dim, k=3, p=1, s=2, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+        )
 
     def forward(self, x):
-        # branch-1
-        x1 = self.maxpool(x)
-        # branch-2
-        x2 = self.ds_conv(x)
-        # out-proj
-        out = self.out_conv(torch.cat([x1, x2], dim=1))
+        x1 = self.branch_1(x)
+        x2 = self.branch_2(x)
+        out = torch.cat([x1, x2], dim=1)
 
         return out
 
@@ -153,9 +126,9 @@ class ELANNetv2(nn.Module):
         self.width = width
         self.depth = depth
         self.expand_ratio = [0.5, 0.5, 0.5, 0.25]
+        self.branch_depths = [round(dep * depth) for dep in [3, 3, 3, 3]]
         ## pyramid feats
         self.feat_dims = [round(dim * width) for dim in [64, 128, 256, 512, 1024, 1024]]
-        self.branch_depths = [round(dep * depth) for dep in [3, 3, 3, 3]]
         ## nonlinear
         self.act_type = act_type
         self.norm_type = norm_type
@@ -169,23 +142,23 @@ class ELANNetv2(nn.Module):
         )
         ## P2/4
         self.layer_2 = nn.Sequential(   
-            DSBlock(self.feat_dims[0], self.feat_dims[1], act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
-            ELAN_Stage(self.feat_dims[1], self.feat_dims[2], self.expand_ratio[0], self.branch_depths[0], True, self.act_type, self.norm_type, self.depthwise)
+            Conv(self.feat_dims[0], self.feat_dims[1], k=3, p=1, s=2, act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
+            ELANBlock(self.feat_dims[1], self.feat_dims[2], self.expand_ratio[0], self.branch_depths[0], True, self.act_type, self.norm_type, self.depthwise)
         )
         ## P3/8
         self.layer_3 = nn.Sequential(
-            Conv(self.feat_dims[2], self.feat_dims[2], k=3, p=1, s=2, act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
-            ELAN_Stage(self.feat_dims[2], self.feat_dims[3], self.expand_ratio[1], self.branch_depths[1], True, self.act_type, self.norm_type, self.depthwise)
+            DSBlock(self.feat_dims[2], self.feat_dims[2], act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
+            ELANBlock(self.feat_dims[2], self.feat_dims[3], self.expand_ratio[1], self.branch_depths[1], True, self.act_type, self.norm_type, self.depthwise)
         )
         ## P4/16
         self.layer_4 = nn.Sequential(
-            Conv(self.feat_dims[3], self.feat_dims[3], k=3, p=1, s=2, act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
-            ELAN_Stage(self.feat_dims[3], self.feat_dims[4], self.expand_ratio[2], self.branch_depths[2], True, self.act_type, self.norm_type, self.depthwise)
+            DSBlock(self.feat_dims[3], self.feat_dims[3], act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
+            ELANBlock(self.feat_dims[3], self.feat_dims[4], self.expand_ratio[2], self.branch_depths[2], True, self.act_type, self.norm_type, self.depthwise)
         )
         ## P5/32
         self.layer_5 = nn.Sequential(
-            Conv(self.feat_dims[4], self.feat_dims[4], k=3, p=1, s=2, act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
-            ELAN_Stage(self.feat_dims[4], self.feat_dims[5], self.expand_ratio[3], self.branch_depths[3], True, self.act_type, self.norm_type, self.depthwise)
+            DSBlock(self.feat_dims[4], self.feat_dims[4], act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
+            ELANBlock(self.feat_dims[4], self.feat_dims[5], self.expand_ratio[3], self.branch_depths[3], True, self.act_type, self.norm_type, self.depthwise)
         )
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -232,7 +205,7 @@ def build_elannetv2(model_name='elannet_v2_small', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_elannetv2(model_name='elannet_v2_tiny')
+    model = build_elannetv2(model_name='elannet_v2_large')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
