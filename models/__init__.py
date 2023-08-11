@@ -4,6 +4,7 @@ from .darknet19 import build_darknet19
 from .darknet53 import build_darknet53
 from .darknet import build_darknet
 from .elannet import build_elannet
+from .elannetv2 import build_elannetv2
 from .elan_cspnet import build_elan_cspnet
 from .cspdarknet import build_cspdarknet
 from .convmixer import build_convmixer
@@ -20,6 +21,12 @@ def build_model(model_name='resnet18',
                       'elannet_p6_large', 'elannet_p6_huge',
                       'elannet_p7_large', 'elannet_p7_huge']:
         model = build_elannet(
+            model_name=model_name,
+            pretrained=pretrained
+        )
+
+    elif model_name in ['elannet_v2_pico', 'elannet_v2_nano', 'elannet_v2_tiny', 'elannet_v2_small', 'elannet_v2_medium', 'elannet_v2_large', 'elannet_v2_huge']:
+        model = build_elannetv2(
             model_name=model_name,
             pretrained=pretrained
         )

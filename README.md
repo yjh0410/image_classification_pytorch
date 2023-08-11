@@ -88,4 +88,4 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 | MCNet-Pico  | 100   | 224  |  58.4 |  0.2   | 0.6 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/mcnet_pico.pth) |
 | MCNet-Nano  | 100   | 224  |  60.2 |  0.3   | 0.9 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/mcnet_nano.pth) |
 | MCNet-Tiny  | 100   | 224  |  66.5 |  0.7   | 1.8 M  |  |
-| MCNet-Small | 100   | 224  |       |  1.2   | 3.0 M  |  |
+| MCNet-Small | 100   | 224  |       |  1.2   | 2.9 M  |  |
