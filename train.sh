@@ -7,7 +7,7 @@ python train.py --cuda \
                 --eval_epoch 5 \
                 --batch_size 128 \
                 --optimizer adamw \
-                --base_lr 1e-3 \
+                --base_lr 4e-3 \
                 --min_lr 1e-6 \
-                -accu 8 \
+                -accu 32 \
                 --ema \
