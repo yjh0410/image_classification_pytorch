@@ -142,12 +142,11 @@ class MCBlock(nn.Module):
 
 ## DownSample Block
 class DSBlock(nn.Module):
-    def __init__(self, in_dim, out_dim, num_heads=4, act_type='silu', norm_type='BN', depthwise=False):
+    def __init__(self, in_dim, out_dim, act_type='silu', norm_type='BN', depthwise=False):
         super().__init__()
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.inter_dim = out_dim // 2
-        self.num_heads = num_heads
         # branch-1
         self.maxpool = nn.Sequential(
             Conv(in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type),
@@ -199,17 +198,17 @@ class MixedConvNet(nn.Module):
         )
         ## P3/8
         self.layer_3 = nn.Sequential(
-            DSBlock(self.feat_dims[1], self.feat_dims[2], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
+            DSBlock(self.feat_dims[1], self.feat_dims[2], self.act_type, self.norm_type, self.depthwise),             
             MCBlock(self.feat_dims[2], self.feat_dims[2], self.nblocks[1], self.num_heads, True, self.act_type, self.norm_type, self.depthwise)
         )
         ## P4/16
         self.layer_4 = nn.Sequential(
-            DSBlock(self.feat_dims[2], self.feat_dims[3], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
+            DSBlock(self.feat_dims[2], self.feat_dims[3], self.act_type, self.norm_type, self.depthwise),             
             MCBlock(self.feat_dims[3], self.feat_dims[3], self.nblocks[2], self.num_heads, True, self.act_type, self.norm_type, self.depthwise)
         )
         ## P5/32
         self.layer_5 = nn.Sequential(
-            DSBlock(self.feat_dims[3], self.feat_dims[4], self.num_heads, self.act_type, self.norm_type, self.depthwise),             
+            DSBlock(self.feat_dims[3], self.feat_dims[4], self.act_type, self.norm_type, self.depthwise),             
             MCBlock(self.feat_dims[4], self.feat_dims[4], self.nblocks[3], self.num_heads, True, self.act_type, self.norm_type, self.depthwise)
         )
 
