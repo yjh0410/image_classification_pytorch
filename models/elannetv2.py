@@ -59,7 +59,33 @@ class Conv(nn.Module):
     def forward(self, x):
         return self.convs(x)
 
-## ELAN Block
+## YOLO-style BottleNeck
+class YoloBottleneck(nn.Module):
+    def __init__(self,
+                 in_dim,
+                 out_dim,
+                 kernel_sizes :List[int] = [3, 3],
+                 expand_ratio :float     = 0.5,
+                 shortcut     :bool      = False,
+                 act_type     :str       = 'silu',
+                 norm_type    :str       = 'BN',
+                 depthwise    :bool      = False):
+        super(YoloBottleneck, self).__init__()
+        # ------------------ Basic parameters ------------------
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.inter_dim = int(out_dim * expand_ratio)
+        self.shortcut = shortcut and in_dim == out_dim
+        # ------------------ Network parameters ------------------
+        self.cv1 = Conv(in_dim, self.inter_dim, k=kernel_sizes[0], p=kernel_sizes[0]//2, norm_type=norm_type, act_type=act_type, depthwise=depthwise)
+        self.cv2 = Conv(self.inter_dim, out_dim, k=kernel_sizes[1], p=kernel_sizes[1]//2, norm_type=norm_type, act_type=act_type, depthwise=depthwise)
+
+    def forward(self, x):
+        h = self.cv2(self.cv1(x))
+
+        return x + h if self.shortcut else h
+
+## ELAN Block for Backbone
 class ELANBlock(nn.Module):
     def __init__(self, in_dim, out_dim, expand_ratio :float=0.5, branch_depth :int=1, shortcut=False, act_type='silu', norm_type='BN', depthwise=False):
         super().__init__()
@@ -71,29 +97,34 @@ class ELANBlock(nn.Module):
         self.branch_depth = branch_depth
         self.shortcut = shortcut
         # ----------- Network Parameters -----------
+        ## branch-1
         self.cv1 = Conv(in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
+        ## branch-2
         self.cv2 = Conv(in_dim, self.inter_dim, k=1, act_type=act_type, norm_type=norm_type)
+        ## branch-3
         self.cv3 = nn.Sequential(*[
-            Conv(self.inter_dim, self.inter_dim, k=3, p=1, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+            YoloBottleneck(self.inter_dim, self.inter_dim, [1, 3], 1.0, shortcut, act_type, norm_type, depthwise)
             for _ in range(branch_depth)
         ])
+        ## branch-4
         self.cv4 = nn.Sequential(*[
-            Conv(self.inter_dim, self.inter_dim, k=3, p=1, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+            YoloBottleneck(self.inter_dim, self.inter_dim, [1, 3], 1.0, shortcut, act_type, norm_type, depthwise)
             for _ in range(branch_depth)
         ])
+        ## output proj
         self.out = Conv(self.inter_dim*4, out_dim, k=1, act_type=act_type, norm_type=norm_type)
 
     def forward(self, x):
         x1 = self.cv1(x)
         x2 = self.cv2(x)
-        x3 = self.cv3(x2) + x2 if self.shortcut else self.cv3(x2)
-        x4 = self.cv4(x3) + x3 if self.shortcut else self.cv4(x3)
+        x3 = self.cv3(x2)
+        x4 = self.cv4(x3)
 
         # [B, C, H, W] -> [B, 2C, H, W]
         out = self.out(torch.cat([x1, x2, x3, x4], dim=1))
 
         return out
-    
+
 ## DownSample Block
 class DSBlock(nn.Module):
     def __init__(self, in_dim, out_dim, act_type='silu', norm_type='BN', depthwise=False):
@@ -142,7 +173,7 @@ class ELANNetv2(nn.Module):
         )
         ## P2/4
         self.layer_2 = nn.Sequential(   
-            Conv(self.feat_dims[0], self.feat_dims[1], k=3, p=1, s=2, act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
+            DSBlock(self.feat_dims[0], self.feat_dims[1], act_type=self.act_type, norm_type=self.norm_type, depthwise=self.depthwise),
             ELANBlock(self.feat_dims[1], self.feat_dims[2], self.expand_ratio[0], self.branch_depths[0], True, self.act_type, self.norm_type, self.depthwise)
         )
         ## P3/8
