@@ -129,6 +129,7 @@ def main():
                             tf.Normalize([0.485, 0.456, 0.406],
                                          [0.229, 0.224, 0.225])]))
     train_loader = build_dataloader(args, train_dataset)
+    epoch_size = len(train_loader)
     ## val dataset
     val_dataset = torchvision.datasets.ImageFolder(
                         root=os.path.join(args.data_path, 'val'), 
@@ -175,10 +176,6 @@ def main():
         model = DDP(model, device_ids=[args.gpu])
         model_without_ddp = model.module
 
-    # ------------------------- Train Config -------------------------
-    best_acc1 = -1.
-    epoch_size = len(train_loader)
-
     # ---------------------------------- Build Optimizer ----------------------------------
     print("Optimizer: {}".format(args.optimizer))
     args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
@@ -194,6 +191,7 @@ def main():
 
     # ------------------------- Training Pipeline -------------------------
     t0 = time.time()
+    best_acc1 = -1.
     print("=================== Start training ===================")
     for epoch in range(args.start_epoch, args.max_epoch):
         if args.distributed:
