@@ -155,7 +155,7 @@ def main():
     print(model)
     ## compute FLOPs & Params
     if distributed_utils.is_main_process:
-        model_copy = deepcopy(model_without_ddp)
+        model_copy = deepcopy(model)
         model_copy.eval()
         FLOPs_and_Params(model=model_copy, size=args.img_size)
         model_copy.train()
