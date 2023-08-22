@@ -26,6 +26,8 @@ def parse_args():
     # Basic
     parser.add_argument('--cuda', action='store_true', default=False,
                         help='use cuda')
+    parser.add_argument('--img_size', type=int,
+                        default=224, help='input image size')
     parser.add_argument('--batch_size', type=int,
                         default=1024, help='batch size')
     parser.add_argument('--num_workers', type=int, default=4,
@@ -121,8 +123,8 @@ def main():
     train_dataset = torchvision.datasets.ImageFolder(
                         root=os.path.join(args.data_path, 'train'),
                         transform=tf.Compose([
-                            tf.RandomResizedCrop(224),
-                            tf.RandomHorizontalFlip(args.hflip),
+                            tf.RandomResizedCrop(args.img_size),
+                            tf.RandomHorizontalFlip(),
                             tf.ToTensor(),
                             tf.Normalize([0.485, 0.456, 0.406],
                                          [0.229, 0.224, 0.225])]))
@@ -131,8 +133,8 @@ def main():
     val_dataset = torchvision.datasets.ImageFolder(
                         root=os.path.join(args.data_path, 'val'), 
                         transform=tf.Compose([
-                            tf.Resize(256),
-                            tf.CenterCrop(224),
+                            tf.Resize(int(256 / 224 * args.img_size)),
+                            tf.CenterCrop(args.img_size),
                             tf.ToTensor(),
                             tf.Normalize([0.485, 0.456, 0.406],
                                          [0.229, 0.224, 0.225])]))
@@ -155,7 +157,7 @@ def main():
     if distributed_utils.is_main_process:
         model_copy = deepcopy(model_without_ddp)
         model_copy.eval()
-        FLOPs_and_Params(model=model_copy, size=224)
+        FLOPs_and_Params(model=model_copy, size=args.img_size)
         model_copy.train()
     if args.distributed:
         # wait for all processes to synchronize
