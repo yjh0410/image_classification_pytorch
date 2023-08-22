@@ -179,9 +179,9 @@ def main():
 
     # ---------------------------------- Build Optimizer ----------------------------------
     print("Optimizer: {}".format(args.optimizer))
-    base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
-    min_lr = args.min_lr * args.batch_size * args.grad_accumulate / 1024
-    optimizer = optim.AdamW(model_without_ddp.parameters(), lr=base_lr, weight_decay=args.weight_decay)
+    args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
+    args.min_lr = args.min_lr * args.batch_size * args.grad_accumulate / 1024
+    optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=args.weight_decay)
 
     # ------------------------- Build Lr Scheduler -------------------------
     lf = lambda x: ((1 - math.cos(x * math.pi / args.max_epoch)) / 2) * (args.min_lr / args.base_lr - 1) + 1

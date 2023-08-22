@@ -77,7 +77,7 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 
 |    Model            | Epoch | size | acc@1 | GFLOPs | Params |  Weight |
 |---------------------|-------|------|-------|--------|--------|---------|
-| ELANNet-Pico        | 100   | 224  |   | 0.2    | 0.6 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_pico.pth) |
-| ELANNet-Nano        | 100   | 224  |   | 0.4    | 0.9 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_nano.pth) |
-| ELANNet-Tiny        | 100   | 224  |  67.1 | 0.9    | 1.9 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_v2_tiny.pth) |
-| ELANNet-Small       | 100   | 224  |  70.4 | 1.7    | 3.3 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_v2_small.pth) |
+| ELANNetv2-Pico      | 100   | 224  |   | 0.2    | 0.6 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_v2_pico.pth) |
+| ELANNetv2-Nano      | 100   | 224  |  60.8 | 0.4    | 0.9 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_v2_nano.pth) |
+| ELANNetv2-Tiny      | 100   | 224  |  67.1 | 0.9    | 1.9 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_v2_tiny.pth) |
+| ELANNetv2-Small     | 100   | 224  |  70.4 | 1.7    | 3.3 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_v2_small.pth) |
