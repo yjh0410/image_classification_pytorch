@@ -151,19 +151,19 @@ class ELANNet(nn.Module):
         )
         # P3/8
         self.layer_3 = nn.Sequential(
-            DownSample(in_dim=int(256*width), out_dim=int(256*width), act_type=act_type, norm_type=norm_type),             
+            DownSample(in_dim=int(256*width), out_dim=int(256*width), act_type=act_type, norm_type=norm_type, depthwise=depthwise),             
             ELANBlock(in_dim=int(256*width), out_dim=int(512*width), expand_ratio=0.5, depth=depth,
                       act_type=act_type, norm_type=norm_type, depthwise=depthwise)
         )
         # P4/16
         self.layer_4 = nn.Sequential(
-            DownSample(in_dim=int(512*width), out_dim=int(512*width), act_type=act_type, norm_type=norm_type),             
+            DownSample(in_dim=int(512*width), out_dim=int(512*width), act_type=act_type, norm_type=norm_type, depthwise=depthwise),             
             ELANBlock(in_dim=int(512*width), out_dim=int(1024*width), expand_ratio=0.5, depth=depth,
                       act_type=act_type, norm_type=norm_type, depthwise=depthwise)
         )
         # P5/32
         self.layer_5 = nn.Sequential(
-            DownSample(in_dim=int(1024*width), out_dim=int(1024*width), act_type=act_type, norm_type=norm_type),             
+            DownSample(in_dim=int(1024*width), out_dim=int(1024*width), act_type=act_type, norm_type=norm_type, depthwise=depthwise),             
             ELANBlock(in_dim=int(1024*width), out_dim=int(1024*width), expand_ratio=0.25, depth=depth,
                     act_type=act_type, norm_type=norm_type, depthwise=depthwise)
         )
@@ -357,7 +357,7 @@ def build_elannet(model_name='elannet_large', pretrained=False):
 if __name__ == '__main__':
     import time
     from thop import profile
-    model = build_elannet(model_name='elannet_small')
+    model = build_elannet(model_name='elannet_pico')
     x = torch.randn(1, 3, 224, 224)
     t0 = time.time()
     y = model(x)
