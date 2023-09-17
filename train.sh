@@ -1,5 +1,5 @@
 python train.py --cuda \
-                --data_path /mnt/share/ssd2/dataset/imagenet/ \
+                --data_path /data/datasets/imagenet-1k/ \
                 --num_classes 1000 \
                 -m elannet_pico \
                 --wp_epoch 10 \
