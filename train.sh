@@ -39,7 +39,6 @@ elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
                     --world_size ${WORLD_SIZE} \
-                    --sybn \
                     --ema
 else
     echo "The WORLD_SIZE is set to a value greater than 8, indicating the use of multi-machine \
