@@ -142,7 +142,7 @@ def main():
 
     # ------------------------- Build Model -------------------------
     ## build model
-    model = build_model(args.model, args.pretrained, args.num_classes, args.resume)
+    model = build_model(args.model, args.resume)
     model.train().to(device)
     print(model)
     ## compute FLOPs & Params
