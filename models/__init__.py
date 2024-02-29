@@ -5,10 +5,8 @@ from .darknet53 import build_darknet53
 from .darknet import build_darknet
 from .elannet import build_elannet
 from .elannetv2 import build_elannetv2
-from .elan_cspnet import build_elan_cspnet
 from .cspdarknet import build_cspdarknet
-from .convmixer import build_convmixer
-from .mcnet import build_mcnet
+from .rtcnet import build_rtcnet
 
 
 def build_model(model_name='resnet18',
@@ -27,13 +25,6 @@ def build_model(model_name='resnet18',
 
     elif model_name in ['elannet_v2_pico', 'elannet_v2_nano', 'elannet_v2_tiny', 'elannet_v2_small', 'elannet_v2_medium', 'elannet_v2_large', 'elannet_v2_huge']:
         model = build_elannetv2(
-            model_name=model_name,
-            pretrained=pretrained
-        )
-
-    elif model_name in ['elan_cspnet_nano',  'elan_cspnet_small', 'elan_cspnet_medium',
-                        'elan_cspnet_large', 'elan_cspnet_huge']:
-        model = build_elan_cspnet(
             model_name=model_name,
             pretrained=pretrained
         )
@@ -57,16 +48,11 @@ def build_model(model_name='resnet18',
     elif model_name in ['cspdarknet53_silu', 'cspdarknet_tiny']:
         model = build_darknet(model_name, csp_block=True, pretrained=pretrained)
 
-    elif model_name in ['convmixer_nano',  'convmixer_small', 'convmixer_medium',
-                        'convmixer_large', 'convmixer_huge']:
-        model = build_convmixer(
-            model_name=model_name,
-            pretrained=pretrained
-        )
+    elif model_name in ['rtcnet_p', 'rtcnet_n', 'rtcnet_t', 'rtcnet_s', 'rtcnet_m', 'rtcnet_l', 'rtcnet_x']:
+        model = build_rtcnet(model_name)
 
-    if model_name in ['mcnet_pico', 'mcnet_nano', 'mcnet_tiny', 'mcnet_small', 'mcnet_medium', 'mcnet_large', 'mcnet_huge']:
-        model = build_mcnet(model_name, pretrained)
-
+    else:
+        raise NotImplementedError("Unknown model: {}".format(model_name))
         
     if resume is not None:
         print('keep training: ', resume)

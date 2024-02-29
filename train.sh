@@ -1,11 +1,51 @@
-python train.py --cuda \
-                --data_path /data/datasets/imagenet-1k/ \
-                --num_classes 1000 \
-                -m elannet_pico \
-                --wp_epoch 10 \
-                --max_epoch 100 \
-                --eval_epoch 5 \
-                --batch_size 128 \
-                --optimizer adamw \
-                --grad_accumulate 32 \
-                --ema \
+# ------------------- Args setting -------------------
+MODEL=$1
+BATCH_SIZE=$2
+DATASET_ROOT=$3
+WORLD_SIZE=$4
+MASTER_PORT=$5
+
+# ------------------- Training setting -------------------
+MAX_EPOCH=300
+WP_EPOCH=20
+EVAL_EPOCH=10
+BASE_LR=1e-3
+MIN_LR=1e-6
+
+if [[ $MODEL == *"rtcnet"* ]]; then
+    USE_PIXEL_STATISTIC=False
+else
+    USE_PIXEL_STATISTIC=True
+fi
+
+# ------------------- Training pipeline -------------------
+if [ $WORLD_SIZE == 1 ]; then
+    python train.py --data_path ${DATASET_ROOT} \
+                    --model ${MODEL} \
+                    --wp_epoch ${WP_EPOCH} \
+                    --max_epoch ${MAX_EPOCH} \
+                    --eval_epoch ${EVAL_EPOCH} \
+                    --batch_size ${BATCH_SIZE} \
+                    --base_lr ${BASE_LR} \
+                    --min_lr ${MIN_LR} \
+                    --use_pixel_statistic ${USE_PIXEL_STATISTIC} \
+                    --ema
+elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
+    python -m torch.distributed.run --nproc_per_node=${WORLD_SIZE} --master_port ${MASTER_PORT} main.py \
+                    --distributed \
+                    --data_path ${DATASET_ROOT} \
+                    --model ${MODEL} \
+                    --wp_epoch ${WP_EPOCH} \
+                    --max_epoch ${MAX_EPOCH} \
+                    --eval_epoch ${EVAL_EPOCH} \
+                    --batch_size ${BATCH_SIZE} \
+                    --base_lr ${BASE_LR} \
+                    --min_lr ${MIN_LR} \
+                    --use_pixel_statistic ${USE_PIXEL_STATISTIC} \
+                    --world_size ${WORLD_SIZE} \
+                    --ema
+else
+    echo "The WORLD_SIZE is set to a value greater than 8, indicating the use of multi-machine \
+          multi-card training mode, which is currently unsupported."
+    exit 1
+fi

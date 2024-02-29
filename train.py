@@ -10,7 +10,6 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.cuda.amp as amp
 
 import torchvision
 from torchvision import transforms as tf
@@ -24,8 +23,6 @@ from utils.com_flops_params import FLOPs_and_Params
 def parse_args():
     parser = argparse.ArgumentParser()
     # Basic
-    parser.add_argument('--cuda', action='store_true', default=False,
-                        help='use cuda')
     parser.add_argument('--img_size', type=int,
                         default=224, help='input image size')
     parser.add_argument('--batch_size', type=int,
@@ -34,8 +31,6 @@ def parse_args():
                         help='number of workers')
     parser.add_argument('--path_to_save', type=str, 
                         default='weights/')
-    parser.add_argument('--tfboard', action='store_true', default=False,
-                        help='use tensorboard')
     # Epoch
     parser.add_argument('--wp_epoch', type=int, default=20, 
                         help='warmup epoch')
@@ -46,12 +41,6 @@ def parse_args():
     parser.add_argument('--eval_epoch', type=int, default=1, 
                         help='max epoch')
     # Optimizer
-    parser.add_argument('-opt', '--optimizer', type=str, default='adamw',
-                        help='sgd, adam')
-    parser.add_argument('-wd', '--weight_decay', type=float, default=0.05,
-                        help='weight decay')
-    parser.add_argument('-mn', '--momentum', type=float, default=0.9,
-                        help='momentum for SGD')
     parser.add_argument('--grad_accumulate', type=int, default=1,
                         help='gradient grad_accumulate')
     parser.add_argument('--base_lr', type=float,
@@ -59,12 +48,8 @@ def parse_args():
     parser.add_argument('--min_lr', type=float,
                         default=1e-6, help='the final lr')
     # Model
-    parser.add_argument('-m', '--model', type=str, default='resnet18',
+    parser.add_argument('-m', '--model', type=str, default='darknet19',
                         help='resnet18, resnet34, ...')
-    parser.add_argument('-p', '--pretrained', action='store_true', default=False,
-                        help='use imagenet pretrained weight.')
-    parser.add_argument('--norm_type', type=str, default='BN',
-                        help='normalization layer.')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='keep training')
     parser.add_argument('--ema', action='store_true', default=False,
@@ -73,6 +58,8 @@ def parse_args():
                         help='number of classes')
     # Dataset
     parser.add_argument('-root', '--data_path', type=str, default='/mnt/share/ssd2/dataset',
+                        help='path to dataset')
+    parser.add_argument('--use_pixel_statistic', type=bool, default=False,
                         help='path to dataset')
     # DDP train
     parser.add_argument('-dist', '--distributed', action='store_true', default=False,
@@ -94,31 +81,37 @@ def main():
     path_to_save = os.path.join(args.path_to_save, args.model)
     os.makedirs(path_to_save, exist_ok=True)
     
-    # ------------------------- Build DDP environment -------------------------
-    print('World size: {}'.format(distributed_utils.get_world_size()))
+    # ---------------------------- Build DDP ----------------------------
+    local_rank = local_process_rank = -1
     if args.distributed:
         distributed_utils.init_distributed_mode(args)
         print("git:\n  {}\n".format(distributed_utils.get_sha()))
+        try:
+            # Multiple Mechine & Multiple GPUs (world size > 8)
+            local_rank = torch.distributed.get_rank()
+            local_process_rank = int(os.getenv('LOCAL_PROCESS_RANK', '0'))
+        except:
+            # Single Mechine & Multiple GPUs (world size <= 8)
+            local_rank = local_process_rank = torch.distributed.get_rank()
+    world_size = distributed_utils.get_world_size()
+    print("LOCAL RANK: ", local_rank)
+    print("LOCAL_PROCESS_RANL: ", local_process_rank)
+    print('WORLD SIZE: {}'.format(world_size))
 
     # ------------------------- Build CUDA -------------------------
-    if args.cuda:
+    if torch.cuda.is_available():
         print("use cuda")
         cudnn.benchmark = True
         device = torch.device("cuda")
     else:
+        print("use cpu")
         device = torch.device("cpu")
 
-    # ------------------------- Build Tensorboard -------------------------
-    if args.tfboard:
-        print('use tensorboard')
-        from torch.utils.tensorboard import SummaryWriter
-        c_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
-        log_path = os.path.join('log/', args.dataset, c_time)
-        os.makedirs(log_path, exist_ok=True)
-
-        tblogger = SummaryWriter(log_path)
-
     # ------------------------- Build Dataset -------------------------
+    pixel_mean = [0.485, 0.456, 0.406] if args.use_pixel_statistic else [0., 0., 0.]
+    pixel_std  = [0.229, 0.224, 0.225] if args.use_pixel_statistic else [1., 1., 1.]
+    print("Pixel mean: {}".format(pixel_mean))
+    print("Pixel std:  {}".format(pixel_std))
     ## train dataset
     train_dataset = torchvision.datasets.ImageFolder(
                         root=os.path.join(args.data_path, 'train'),
@@ -126,9 +119,8 @@ def main():
                             tf.RandomResizedCrop(args.img_size),
                             tf.RandomHorizontalFlip(),
                             tf.ToTensor(),
-                            tf.Normalize([0.485, 0.456, 0.406],
-                                         [0.229, 0.224, 0.225])]))
-    train_loader = build_dataloader(args, train_dataset)
+                            tf.Normalize(pixel_mean, pixel_std)]))
+    train_loader = build_dataloader(args, train_dataset, args.batch_size // world_size)
     epoch_size = len(train_loader)
     ## val dataset
     val_dataset = torchvision.datasets.ImageFolder(
@@ -137,11 +129,10 @@ def main():
                             tf.Resize(int(256 / 224 * args.img_size)),
                             tf.CenterCrop(args.img_size),
                             tf.ToTensor(),
-                            tf.Normalize([0.485, 0.456, 0.406],
-                                         [0.229, 0.224, 0.225])]))
+                            tf.Normalize(pixel_mean, pixel_std)]))
     val_loader = torch.utils.data.DataLoader(
                         dataset=val_dataset,
-                        batch_size=args.batch_size, 
+                        batch_size=256, 
                         shuffle=False,
                         num_workers=args.num_workers, 
                         pin_memory=True)
@@ -174,13 +165,15 @@ def main():
     model_without_ddp = model
     if args.distributed:
         model = DDP(model, device_ids=[args.gpu])
+        if args.sybn:
+            print('use SyncBatchNorm ...')
+            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model_without_ddp = model.module
 
     # ---------------------------------- Build Optimizer ----------------------------------
-    print("Optimizer: {}".format(args.optimizer))
     args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
-    args.min_lr = args.min_lr * args.batch_size * args.grad_accumulate / 1024
-    optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=args.weight_decay)
+    args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 1024
+    optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
 
     # ------------------------- Build Lr Scheduler -------------------------
     lf = lambda x: ((1 - math.cos(x * math.pi / args.max_epoch)) / 2) * (args.min_lr / args.base_lr - 1) + 1
@@ -232,12 +225,6 @@ def main():
 
             # Logs
             if distributed_utils.is_main_process() and iter_i % 10 == 0:
-                if args.tfboard:
-                    # viz loss
-                    tblogger.add_scalar('loss',  loss.item() * args.grad_accumulate,  ni)
-                    tblogger.add_scalar('acc1',  acc[0].item(),  ni)
-                    tblogger.add_scalar('acc5',  acc[1].item(),  ni)
-                
                 t1 = time.time()
                 cur_lr = [param_group['lr']  for param_group in optimizer.param_groups]
                 # basic infor
@@ -310,21 +297,14 @@ def validate(device, val_loader, model, criterion):
     return loss, acc1
 
 
-def set_lr(optimizer, lr):
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-
-
-def build_dataloader(args, dataset):
+def build_dataloader(args, dataset, batch_size):
     # distributed
     if args.distributed:
         sampler = torch.utils.data.distributed.DistributedSampler(dataset)
     else:
         sampler = torch.utils.data.RandomSampler(dataset)
 
-    batch_sampler_train = torch.utils.data.BatchSampler(sampler, 
-                                                        args.batch_size, 
-                                                        drop_last=True)
+    batch_sampler_train = torch.utils.data.BatchSampler(sampler, batch_size, drop_last=True)
 
     dataloader = torch.utils.data.DataLoader(dataset, 
                                              batch_sampler=batch_sampler_train,
