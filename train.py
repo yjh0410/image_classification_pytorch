@@ -59,7 +59,7 @@ def parse_args():
     # Dataset
     parser.add_argument('-root', '--data_path', type=str, default='/mnt/share/ssd2/dataset',
                         help='path to dataset')
-    parser.add_argument('--use_pixel_statistic', type=bool, default=False,
+    parser.add_argument('--use_pixel_statistic', action='store_true', default=False,
                         help='path to dataset')
     # DDP train
     parser.add_argument('-dist', '--distributed', action='store_true', default=False,

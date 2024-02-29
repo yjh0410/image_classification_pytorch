@@ -26,7 +26,6 @@ if [ $WORLD_SIZE == 1 ]; then
                     --batch_size ${BATCH_SIZE} \
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
-                    --use_pixel_statistic ${USE_PIXEL_STATISTIC} \
                     --ema
 elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
     python -m torch.distributed.run --nproc_per_node=${WORLD_SIZE} --master_port ${MASTER_PORT} train.py \
@@ -39,7 +38,6 @@ elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
                     --batch_size ${BATCH_SIZE} \
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
-                    --use_pixel_statistic ${USE_PIXEL_STATISTIC} \
                     --world_size ${WORLD_SIZE} \
                     --ema
 else
