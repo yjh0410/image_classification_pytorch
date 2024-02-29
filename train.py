@@ -165,10 +165,10 @@ def main():
     model_without_ddp = model
     if args.distributed:
         model = DDP(model, device_ids=[args.gpu])
+        model_without_ddp = model.module
         if args.sybn:
             print('use SyncBatchNorm ...')
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        model_without_ddp = model.module
 
     # ---------------------------------- Build Optimizer ----------------------------------
     args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
