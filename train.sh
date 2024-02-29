@@ -11,11 +11,9 @@ WP_EPOCH=20
 EVAL_EPOCH=10
 BASE_LR=1e-3
 MIN_LR=1e-6
-
+USE_PIXEL_STATISTIC=True
 if [[ $MODEL == *"rtcnet"* ]]; then
     USE_PIXEL_STATISTIC=False
-else
-    USE_PIXEL_STATISTIC=True
 fi
 
 # ------------------- Training pipeline -------------------
