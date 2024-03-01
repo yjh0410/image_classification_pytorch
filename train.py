@@ -195,6 +195,9 @@ def main():
     # ------------------------- Build Lr Scheduler -------------------------
     lf = lambda x: ((1 - math.cos(x * math.pi / args.max_epoch)) / 2) * (args.min_lr / args.base_lr - 1) + 1
     lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
+    lr_scheduler.last_epoch = start_epoch - 1  # do not move
+    if args.resume and args.resume != 'None':
+        lr_scheduler.step()
 
     # ------------------------- Build Criterion -------------------------
     criterion = torch.nn.CrossEntropyLoss().to(device)
