@@ -13,7 +13,6 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 import torchvision
 from torchvision import transforms as tf
-import torchvision.transforms.v2 as tf2
 
 from models import build_model
 from utils import distributed_utils
@@ -119,7 +118,6 @@ def main():
     train_dataset = torchvision.datasets.ImageFolder(
                         root=os.path.join(args.data_path, 'train'),
                         transform=tf.Compose([
-                            tf2.RandomPhotometricDistort(brightness=(0.875, 1.125), contrast=(0.5, 1.5), saturation=(0.5, 1.5), hue=(-0.05, 0.05), p=0.5),
                             tf.RandomResizedCrop(args.img_size),
                             tf.RandomHorizontalFlip(),
                             tf.ToTensor(),
