@@ -32,6 +32,8 @@ def parse_args():
                         help='number of workers')
     parser.add_argument('--path_to_save', type=str, 
                         default='weights/')
+    parser.add_argument('--fp16', action='store_true', default=False, 
+                        help='enable amp training.')
     # Epoch
     parser.add_argument('--wp_epoch', type=int, default=20, 
                         help='warmup epoch')
@@ -144,7 +146,7 @@ def main():
 
     # ------------------------- Build Model -------------------------
     ## build model
-    model = build_model(args.model, args.resume)
+    model = build_model(args)
     model.train().to(device)
     print(model)
     ## compute FLOPs & Params
@@ -178,6 +180,17 @@ def main():
     print("Base lr: {}".format(args.base_lr))
     print("Min lr : {}".format(args.min_lr))
     optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
+    start_epoch = 0
+    if args.resume and args.resume != "None":
+        print('keep training: ', args.resume)
+        checkpoint = torch.load(args.resume, map_location='cpu')
+        # checkpoint state dict
+        checkpoint_state_dict = checkpoint.pop("optimizer")
+        optimizer.load_state_dict(checkpoint_state_dict)
+        start_epoch = checkpoint.pop("epoch") + 1
+        del checkpoint, checkpoint_state_dict
+
+    scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
 
     # ------------------------- Build Lr Scheduler -------------------------
     lf = lambda x: ((1 - math.cos(x * math.pi / args.max_epoch)) / 2) * (args.min_lr / args.base_lr - 1) + 1
@@ -190,7 +203,7 @@ def main():
     t0 = time.time()
     best_acc1 = -1.
     print("=================== Start training ===================")
-    for epoch in range(args.start_epoch, args.max_epoch):
+    for epoch in range(start_epoch, args.max_epoch):
         if args.distributed:
             train_loader.batch_sampler.sampler.set_epoch(epoch)
 
@@ -208,24 +221,26 @@ def main():
             target = target.to(device, non_blocking=True)
 
             # Inference
-            output = model(images)
-
-            # Loss
-            loss = criterion(output, target)
+            with torch.cuda.amp.autocast(enabled=args.fp16):
+                output = model(images)
+                loss = criterion(output, target)
+                loss /= args.grad_accumulate
 
             # Accuracy
             acc = accuracy(output, target, topk=(1, 5,))            
 
             # Backward
-            loss /= args.grad_accumulate
-            loss.backward() 
+            scaler.scale(loss).backward()
 
             # Update
             if ni % args.grad_accumulate == 0:
-                optimizer.step()
+                scaler.step(optimizer)
+                scaler.update()
                 optimizer.zero_grad()
-            if args.ema:
-                ema.update(model)
+
+                # Model EMA update
+                if args.ema:
+                    ema.update(model)
 
             # Logs
             if distributed_utils.is_main_process() and iter_i % 10 == 0:
@@ -261,8 +276,13 @@ def main():
                     print('saving the model ...')
                     weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch, acc1[0].item())
                     checkpoint_path = os.path.join(path_to_save, weight_name)
-                    torch.save({'model': model_eval.state_dict()}, checkpoint_path)                      
-            
+                    torch.save({'model': model_eval.state_dict(),
+                                'mAP': -1.,
+                                'optimizer': optimizer.state_dict(),
+                                'epoch': epoch,
+                                }, 
+                                checkpoint_path)               
+
         lr_scheduler.step()
 
 

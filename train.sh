@@ -4,6 +4,7 @@ BATCH_SIZE=$2
 DATASET_ROOT=$3
 WORLD_SIZE=$4
 MASTER_PORT=$5
+RESUME=$6
 
 # ------------------- Training setting -------------------
 MAX_EPOCH=300
@@ -22,6 +23,8 @@ if [ $WORLD_SIZE == 1 ]; then
                     --batch_size ${BATCH_SIZE} \
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
+                    --resume ${RESUME} \
+                    --fp16 \
                     --ema
 elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
     python -m torch.distributed.run --nproc_per_node=${WORLD_SIZE} --master_port ${MASTER_PORT} train.py \
@@ -35,6 +38,8 @@ elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
                     --world_size ${WORLD_SIZE} \
+                    --resume ${RESUME} \
+                    --fp16 \
                     --ema
 else
     echo "The WORLD_SIZE is set to a value greater than 8, indicating the use of multi-machine \
