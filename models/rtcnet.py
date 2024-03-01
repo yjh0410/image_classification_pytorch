@@ -250,16 +250,6 @@ def rtcnet_n(num_classes=1000) -> RTCBackbone:
                        num_classes=num_classes
                        )
 
-def rtcnet_t(num_classes=1000) -> RTCBackbone:
-    return RTCBackbone(width=0.375,
-                       depth=0.34,
-                       ratio=2.0,
-                       act_type='silu',
-                       norm_type='BN',
-                       depthwise=False,
-                       num_classes=num_classes
-                       )
-
 def rtcnet_s(num_classes=1000) -> RTCBackbone:
     return RTCBackbone(width=0.50,
                        depth=0.34,
@@ -306,8 +296,6 @@ def build_rtcnet(model_name):
         model = rtcnet_p()
     elif model_name == 'rtcnet_n':
         model = rtcnet_n()
-    elif model_name == 'rtcnet_t':
-        model = rtcnet_t()
     elif model_name == 'rtcnet_s':
         model = rtcnet_s()
     elif model_name == 'rtcnet_m':

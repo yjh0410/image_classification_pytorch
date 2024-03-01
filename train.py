@@ -116,6 +116,7 @@ def main():
     train_dataset = torchvision.datasets.ImageFolder(
                         root=os.path.join(args.data_path, 'train'),
                         transform=tf.Compose([
+                            tf.ColorJitter(brightness=(0.875, 1.125), contrast=(0.5, 1.5), saturation=(0.5, 1.5), hue=(-0.05, 0.05)),
                             tf.RandomResizedCrop(args.img_size),
                             tf.RandomHorizontalFlip(),
                             tf.ToTensor(),

@@ -23,7 +23,7 @@ def build_model(model_name='resnet18', resume=None):
     elif model_name in ['cspdarknet53_silu', 'cspdarknet_tiny']:
         model = build_darknet(model_name, csp_block=True)
 
-    elif model_name in ['rtcnet_p', 'rtcnet_n', 'rtcnet_t', 'rtcnet_s', 'rtcnet_m', 'rtcnet_l', 'rtcnet_x']:
+    elif model_name in ['rtcnet_p', 'rtcnet_n', 'rtcnet_s', 'rtcnet_m', 'rtcnet_l', 'rtcnet_x']:
         model = build_rtcnet(model_name)
 
     else:
