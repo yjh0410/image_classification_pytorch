@@ -7,7 +7,7 @@ MASTER_PORT=$5
 RESUME=$6
 
 # ------------------- Training setting -------------------
-MAX_EPOCH=300
+MAX_EPOCH=150
 WP_EPOCH=20
 EVAL_EPOCH=10
 BASE_LR=1e-3
