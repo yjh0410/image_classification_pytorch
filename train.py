@@ -159,9 +159,9 @@ def main():
     ## EMA Model
     if args.ema:
         print('use EMA ...')
-        ema = ModelEMA(model, args.start_epoch*epoch_size)
+        model_ema = ModelEMA(model, args.start_epoch*epoch_size)
     else:
-        ema = None
+        model_ema = None
 
     # ------------------------- Build DDP Model -------------------------
     model_without_ddp = model
@@ -171,6 +171,9 @@ def main():
         if args.sybn:
             print('use SyncBatchNorm ...')
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
+    # ---------------------------------- Build Grad Scaler ----------------------------------
+    scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
 
     # ---------------------------------- Build Optimizer ----------------------------------
     args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
@@ -187,8 +190,6 @@ def main():
         optimizer.load_state_dict(checkpoint_state_dict)
         start_epoch = checkpoint.pop("epoch") + 1
         del checkpoint, checkpoint_state_dict
-
-    scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
 
     # ------------------------- Build Lr Scheduler -------------------------
     lf = lambda x: ((1 - math.cos(x * math.pi / args.max_epoch)) / 2) * (args.min_lr / args.base_lr - 1) + 1
@@ -241,7 +242,7 @@ def main():
 
                 # Model EMA update
                 if args.ema:
-                    ema.update(model)
+                    model_ema.update(model)
 
             # Logs
             if distributed_utils.is_main_process() and iter_i % 10 == 0:
@@ -267,7 +268,7 @@ def main():
         if distributed_utils.is_main_process():
             if (epoch % args.eval_epoch) == 0 or (epoch == args.max_epoch - 1):
                 print('evaluating ...')
-                model_eval = ema.ema if args.ema else model_without_ddp
+                model_eval = model_ema.ema if args.ema else model_without_ddp
                 loss, acc1 = validate(device, val_loader, model_without_ddp, criterion)
                 print('Eval Results: [loss: %.2f][acc1: %.2f]' % (loss.item(), acc1[0].item()), flush=True)
 
