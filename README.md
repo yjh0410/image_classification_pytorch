@@ -16,7 +16,7 @@ conda activate imagenet
 ```Shell
 pip install -r requirements.txt 
 ```
-PyTorch >= 1.9.1 and Torchvision >= 0.10.1
+PyTorch >= 2.2.0 and Torchvision >= 0.17.0
 
 # Experiments
 ## ImageNet val
