@@ -8,7 +8,7 @@ RESUME=$6
 
 # ------------------- Training setting -------------------
 MAX_EPOCH=150
-WP_EPOCH=20
+WP_EPOCH=10
 EVAL_EPOCH=10
 BASE_LR=1e-3
 MIN_LR=1e-6
