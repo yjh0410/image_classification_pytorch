@@ -7,11 +7,11 @@ MASTER_PORT=$5
 RESUME=$6
 
 # ------------------- Training setting -------------------
-MAX_EPOCH=200
-WP_EPOCH=10
+MAX_EPOCH=150
+WP_EPOCH=5
 EVAL_EPOCH=10
-BASE_LR=1e-3
-MIN_LR=1e-6
+BASE_LR=1e-1
+MIN_LR=1e-3
 
 # ------------------- Training pipeline -------------------
 if [ $WORLD_SIZE == 1 ]; then

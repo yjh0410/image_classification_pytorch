@@ -23,10 +23,10 @@ from utils.com_flops_params import FLOPs_and_Params
 def parse_args():
     parser = argparse.ArgumentParser()
     # Basic
-    parser.add_argument('--img_size', type=int,
-                        default=224, help='input image size')
-    parser.add_argument('--batch_size', type=int,
-                        default=1024, help='batch size')
+    parser.add_argument('--img_size', type=int, default=224,
+                        help='input image size')
+    parser.add_argument('--batch_size', type=int, default=256,
+                        help='batch size')
     parser.add_argument('--num_workers', type=int, default=4,
                         help='number of workers')
     parser.add_argument('--path_to_save', type=str, 
@@ -34,21 +34,21 @@ def parse_args():
     parser.add_argument('--fp16', action='store_true', default=False, 
                         help='enable amp training.')
     # Epoch
-    parser.add_argument('--wp_epoch', type=int, default=20, 
+    parser.add_argument('--wp_epoch', type=int, default=1, 
                         help='warmup epoch')
     parser.add_argument('--start_epoch', type=int, default=0, 
                         help='start epoch')
-    parser.add_argument('--max_epoch', type=int, default=300, 
+    parser.add_argument('--max_epoch', type=int, default=120, 
                         help='max epoch')
-    parser.add_argument('--eval_epoch', type=int, default=1, 
+    parser.add_argument('--eval_epoch', type=int, default=10, 
                         help='max epoch')
     # Optimizer
     parser.add_argument('--grad_accumulate', type=int, default=1,
                         help='gradient grad_accumulate')
     parser.add_argument('--base_lr', type=float,
-                        default=1e-3, help='learning rate for training model')
+                        default=1e-1, help='learning rate for training model with 256 batch size')
     parser.add_argument('--min_lr', type=float,
-                        default=1e-6, help='the final lr')
+                        default=1e-3, help='the learning rate for training model with 256 batch size')
     # Model
     parser.add_argument('-m', '--model', type=str, default='darknet19',
                         help='resnet18, resnet34, ...')
@@ -176,11 +176,11 @@ def main():
     scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
 
     # ---------------------------------- Build Optimizer ----------------------------------
-    args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
-    args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 1024
+    args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 256
+    args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 256
     print("Base lr: {}".format(args.base_lr))
     print("Min lr : {}".format(args.min_lr))
-    optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
+    optimizer = optim.SGD(model_without_ddp.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
     start_epoch = 0
     if args.resume and args.resume != "None":
         print('keep training: ', args.resume)
