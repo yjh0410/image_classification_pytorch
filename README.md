@@ -16,7 +16,7 @@ conda activate imagenet
 ```Shell
 pip install -r requirements.txt 
 ```
-PyTorch >= 2.2.0 and Torchvision >= 0.17.0
+PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 
 # Experiments
 ## ImageNet val
@@ -58,3 +58,14 @@ PyTorch >= 2.2.0 and Torchvision >= 0.17.0
 | ELANNetv2-Nano      | 100   | 224  |  60.8 | 0.4    | 0.9 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_v2_nano.pth) |
 | ELANNetv2-Tiny      | 100   | 224  |  67.1 | 0.9    | 1.9 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_v2_tiny.pth) |
 | ELANNetv2-Small     | 100   | 224  |  70.4 | 1.7    | 3.3 M  | [ckpt](https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/elannet_v2_small.pth) |
+
+* RTCNet (Yolov8's backbone)
+
+|    Model      | Epoch | size | acc@1 | GFLOPs | Params |  Weight |
+|---------------|-------|------|-------|--------|--------|---------|
+| RTCNet-P      | 300   | 224  |       |        |        |  |
+| RTCNet-N      | 300   | 224  |       |        |        |  |
+| RTCNet-S      | 300   | 224  |       |        |        |  |
+| RTCNet-M      | 300   | 224  |       |        |        |  |
+| RTCNet-L      | 300   | 224  |       |        |        |  |
+| RTCNet-X      | 300   | 224  |       |        |        |  |
