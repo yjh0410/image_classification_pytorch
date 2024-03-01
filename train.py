@@ -158,7 +158,7 @@ def main():
         dist.barrier()
     ## EMA Model
     if args.ema:
-        print('use EMA ...')
+        print('Build Model EMA for {} ...'.format(args.model))
         model_ema = ModelEMA(model, args.start_epoch*epoch_size)
     else:
         model_ema = None
