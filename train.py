@@ -176,11 +176,11 @@ def main():
     scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
 
     # ---------------------------------- Build Optimizer ----------------------------------
-    args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 256
-    args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 256
+    args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
+    args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 1024
     print("Base lr: {}".format(args.base_lr))
     print("Min lr : {}".format(args.min_lr))
-    optimizer = optim.SGD(model_without_ddp.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
+    optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
     start_epoch = 0
     if args.resume and args.resume != "None":
         print('keep training: ', args.resume)

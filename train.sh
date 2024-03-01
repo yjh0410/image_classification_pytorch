@@ -10,8 +10,8 @@ RESUME=$6
 MAX_EPOCH=150
 WP_EPOCH=5
 EVAL_EPOCH=10
-BASE_LR=1e-1
-MIN_LR=1e-3
+BASE_LR=1e-3
+MIN_LR=1e-6
 
 # ------------------- Training pipeline -------------------
 if [ $WORLD_SIZE == 1 ]; then
