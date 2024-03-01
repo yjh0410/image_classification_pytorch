@@ -8,26 +8,26 @@ from .rtcnet import build_rtcnet
 
 
 def build_model(args):
-    if args.model_name in ['elannet_v2_pico', 'elannet_v2_nano', 'elannet_v2_tiny', 'elannet_v2_small', 'elannet_v2_medium', 'elannet_v2_large', 'elannet_v2_huge']:
-        model = build_elannetv2(args.model_name)
+    if args.model in ['elannet_v2_pico', 'elannet_v2_nano', 'elannet_v2_tiny', 'elannet_v2_small', 'elannet_v2_medium', 'elannet_v2_large', 'elannet_v2_huge']:
+        model = build_elannetv2(args.model)
 
-    elif args.model_name in ['cspdarknet_nano',  'cspdarknet_small', 'cspdarknet_medium', 'cspdarknet_large', 'cspdarknet_huge']:
-        model = build_cspdarknet(args.model_name)
+    elif args.model in ['cspdarknet_nano',  'cspdarknet_small', 'cspdarknet_medium', 'cspdarknet_large', 'cspdarknet_huge']:
+        model = build_cspdarknet(args.model)
 
-    elif args.model_name in ['darknet19']:
+    elif args.model in ['darknet19']:
         model = build_darknet19()
 
-    elif args.model_name in ['darknet53_silu', 'darknet_tiny']:
-        model = build_darknet(args.model_name, csp_block=False)
+    elif args.model in ['darknet53_silu', 'darknet_tiny']:
+        model = build_darknet(args.model, csp_block=False)
 
-    elif args.model_name in ['cspdarknet53_silu', 'cspdarknet_tiny']:
-        model = build_darknet(args.model_name, csp_block=True)
+    elif args.model in ['cspdarknet53_silu', 'cspdarknet_tiny']:
+        model = build_darknet(args.model, csp_block=True)
 
-    elif args.model_name in ['rtcnet_p', 'rtcnet_n', 'rtcnet_s', 'rtcnet_m', 'rtcnet_l', 'rtcnet_x']:
-        model = build_rtcnet(args.model_name)
+    elif args.model in ['rtcnet_p', 'rtcnet_n', 'rtcnet_s', 'rtcnet_m', 'rtcnet_l', 'rtcnet_x']:
+        model = build_rtcnet(args.model)
 
     else:
-        raise NotImplementedError("Unknown model: {}".format(args.model_name))
+        raise NotImplementedError("Unknown model: {}".format(args.model))
         
     if args.resume and args.resume != "None":
         print('keep training: ', args.resume)
