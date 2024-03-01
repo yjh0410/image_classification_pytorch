@@ -269,7 +269,7 @@ def main():
             if (epoch % args.eval_epoch) == 0 or (epoch == args.max_epoch - 1):
                 print('evaluating ...')
                 model_eval = model_ema.ema if args.ema else model_without_ddp
-                loss, acc1 = validate(device, val_loader, model_without_ddp, criterion)
+                loss, acc1 = validate(device, val_loader, model_eval, criterion)
                 print('Eval Results: [loss: %.2f][acc1: %.2f]' % (loss.item(), acc1[0].item()), flush=True)
 
                 is_best = acc1 > best_acc1
