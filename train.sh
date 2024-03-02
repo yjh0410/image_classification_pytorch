@@ -7,30 +7,31 @@ MASTER_PORT=$5
 RESUME=$6
 
 # ------------------- Training setting -------------------
-MAX_EPOCH=200
-WP_EPOCH=5
-EVAL_EPOCH=10
-BASE_LR=1e-3
-MIN_LR=1e-6
+MAX_EPOCH=120
+WP_EPOCH=-1
+EVAL_EPOCH=5
+BASE_LR=0.1
+MIN_LR=0.0
+OPTIMIZER="sgd"
 
 # ------------------- Training pipeline -------------------
 if [ $WORLD_SIZE == 1 ]; then
     python train.py --data_path ${DATASET_ROOT} \
                     --model ${MODEL} \
+                    --optimizer ${OPTIMIZER} \
                     --wp_epoch ${WP_EPOCH} \
                     --max_epoch ${MAX_EPOCH} \
                     --eval_epoch ${EVAL_EPOCH} \
                     --batch_size ${BATCH_SIZE} \
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
-                    --resume ${RESUME} \
-                    --fp16 \
-                    --ema
+                    --resume ${RESUME}
 elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
     python -m torch.distributed.run --nproc_per_node=${WORLD_SIZE} --master_port ${MASTER_PORT} train.py \
                     --distributed \
                     --data_path ${DATASET_ROOT} \
                     --model ${MODEL} \
+                    --optimizer ${OPTIMIZER} \
                     --wp_epoch ${WP_EPOCH} \
                     --max_epoch ${MAX_EPOCH} \
                     --eval_epoch ${EVAL_EPOCH} \
@@ -38,9 +39,7 @@ elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
                     --world_size ${WORLD_SIZE} \
-                    --resume ${RESUME} \
-                    --fp16 \
-                    --ema
+                    --resume ${RESUME}
 else
     echo "The WORLD_SIZE is set to a value greater than 8, indicating the use of multi-machine \
           multi-card training mode, which is currently unsupported."

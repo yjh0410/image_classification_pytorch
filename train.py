@@ -43,6 +43,8 @@ def parse_args():
     parser.add_argument('--eval_epoch', type=int, default=10, 
                         help='max epoch')
     # Optimizer
+    parser.add_argument('--optimizer', type=str, default='sgd', choices=['sgd', 'adamw'],
+                        help='optimizer')
     parser.add_argument('--grad_accumulate', type=int, default=1,
                         help='gradient grad_accumulate')
     parser.add_argument('--base_lr', type=float,
@@ -176,11 +178,15 @@ def main():
     scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
 
     # ---------------------------------- Build Optimizer ----------------------------------
-    args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
-    args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 1024
+    args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 256
+    args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 256
     print("Base lr: {}".format(args.base_lr))
     print("Min lr : {}".format(args.min_lr))
-    optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
+    print("Optimizer: {}".format(args.optimizer))
+    if   args.optimizer == "sgd":
+        optimizer = optim.SGD(model_without_ddp.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
+    elif args.optimizer == "adamw":
+        optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
     start_epoch = 0
     if args.resume and args.resume != "None":
         print('keep training: ', args.resume)
@@ -204,6 +210,7 @@ def main():
     # ------------------------- Training Pipeline -------------------------
     t0 = time.time()
     best_acc1 = -1.
+    use_warmup = args.wp_epoch > 0
     print("=================== Start training ===================")
     for epoch in range(start_epoch, args.max_epoch):
         if args.distributed:
@@ -214,7 +221,7 @@ def main():
             ni = iter_i + epoch * epoch_size
             nw = args.wp_epoch * epoch_size
             # Warmup
-            if ni <= nw:
+            if ni <= nw and use_warmup:
                 xi = [0, nw]  # x interp
                 for x in optimizer.param_groups:
                     x['lr'] = np.interp(ni, xi, [0.0, x['initial_lr'] * lf(epoch)])
@@ -249,7 +256,7 @@ def main():
                 t1 = time.time()
                 cur_lr = [param_group['lr']  for param_group in optimizer.param_groups]
                 # basic infor
-                log =  '[Epoch: {}/{}]'.format(epoch + 1, args.max_epoch)
+                log =  '[Epoch: {}/{}]'.format(epoch, args.max_epoch)
                 log += '[Iter: {}/{}]'.format(iter_i, epoch_size)
                 log += '[lr: {:.6f}]'.format(cur_lr[0])
                 # loss infor
