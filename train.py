@@ -158,24 +158,15 @@ def main():
     if args.distributed:
         # wait for all processes to synchronize
         dist.barrier()
-    ## EMA Model
-    if args.ema:
-        print('Build Model EMA for {} ...'.format(args.model))
-        model_ema = ModelEMA(model, args.start_epoch*epoch_size)
-    else:
-        model_ema = None
 
     # ------------------------- Build DDP Model -------------------------
     model_without_ddp = model
     if args.distributed:
         model = DDP(model, device_ids=[args.gpu])
-        model_without_ddp = model.module
         if args.sybn:
             print('use SyncBatchNorm ...')
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-
-    # ---------------------------------- Build Grad Scaler ----------------------------------
-    scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
+        model_without_ddp = model.module
 
     # ---------------------------------- Build Optimizer ----------------------------------
     args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 256
@@ -188,21 +179,19 @@ def main():
     elif args.optimizer == "adamw":
         optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
     start_epoch = 0
-    if args.resume and args.resume != "None":
-        print('keep training: ', args.resume)
-        checkpoint = torch.load(args.resume, map_location='cpu')
-        # checkpoint state dict
-        checkpoint_state_dict = checkpoint.pop("optimizer")
-        optimizer.load_state_dict(checkpoint_state_dict)
-        start_epoch = checkpoint.pop("epoch") + 1
-        del checkpoint, checkpoint_state_dict
 
     # ------------------------- Build Lr Scheduler -------------------------
-    lf = lambda x: ((1 - math.cos(x * math.pi / args.max_epoch)) / 2) * (args.min_lr / args.base_lr - 1) + 1
-    lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
-    lr_scheduler.last_epoch = start_epoch - 1  # do not move
-    if args.resume and args.resume != 'None':
-        lr_scheduler.step()
+    lr_step = [args.max_epoch // 3, args.max_epoch // 3 * 2]
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=lr_step, gamma=0.1)
+    print("Lr step: {}".format(lr_step))
+    if args.resume and args.resume != "None":
+        print('Load lr scheduler & optimizer from checkpoint: ', args.resume)
+        checkpoint = torch.load(args.resume, map_location='cpu')
+        # checkpoint state dict
+        lr_scheduler.load_state_dict(checkpoint.pop("lr_scheduler"))
+        optimizer.load_state_dict(checkpoint.pop("optimizer"))
+        start_epoch = checkpoint.pop("epoch") + 1
+        del checkpoint
 
     # ------------------------- Build Criterion -------------------------
     criterion = torch.nn.CrossEntropyLoss().to(device)
@@ -210,7 +199,6 @@ def main():
     # ------------------------- Training Pipeline -------------------------
     t0 = time.time()
     best_acc1 = -1.
-    use_warmup = args.wp_epoch > 0
     print("=================== Start training ===================")
     for epoch in range(start_epoch, args.max_epoch):
         if args.distributed:
@@ -218,38 +206,22 @@ def main():
 
         # train one epoch
         for iter_i, (images, target) in enumerate(train_loader):
-            ni = iter_i + epoch * epoch_size
-            nw = args.wp_epoch * epoch_size
-            # Warmup
-            if ni <= nw and use_warmup:
-                xi = [0, nw]  # x interp
-                for x in optimizer.param_groups:
-                    x['lr'] = np.interp(ni, xi, [0.0, x['initial_lr'] * lf(epoch)])
-
             images = images.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
 
             # Inference
-            with torch.cuda.amp.autocast(enabled=args.fp16):
-                output = model(images)
-                loss = criterion(output, target)
-                loss /= args.grad_accumulate
+            output = model(images)
+            loss = criterion(output, target)
 
             # Accuracy
             acc = accuracy(output, target, topk=(1, 5,))            
 
             # Backward
-            scaler.scale(loss).backward()
+            loss.backward()
 
             # Update
-            if ni % args.grad_accumulate == 0:
-                scaler.step(optimizer)
-                scaler.update()
-                optimizer.zero_grad()
-
-                # Model EMA update
-                if args.ema:
-                    model_ema.update(model)
+            optimizer.step()
+            optimizer.zero_grad()
 
             # Logs
             if distributed_utils.is_main_process() and iter_i % 10 == 0:
@@ -275,8 +247,7 @@ def main():
         if distributed_utils.is_main_process():
             if (epoch % args.eval_epoch) == 0 or (epoch == args.max_epoch - 1):
                 print('evaluating ...')
-                model_eval = model_ema.ema if args.ema else model_without_ddp
-                loss, acc1 = validate(device, val_loader, model_eval, criterion)
+                loss, acc1 = validate(device, val_loader, model_without_ddp, criterion)
                 print('Eval Results: [loss: %.2f][acc1: %.2f]' % (loss.item(), acc1[0].item()), flush=True)
 
                 is_best = acc1 > best_acc1
@@ -285,9 +256,10 @@ def main():
                     print('saving the model ...')
                     weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch, acc1[0].item())
                     checkpoint_path = os.path.join(path_to_save, weight_name)
-                    torch.save({'model': model_eval.state_dict(),
+                    torch.save({'model': model_without_ddp.state_dict(),
                                 'mAP': -1.,
                                 'optimizer': optimizer.state_dict(),
+                                'lr_scheduler': lr_scheduler.state_dict(),
                                 'epoch': epoch,
                                 }, 
                                 checkpoint_path)               
