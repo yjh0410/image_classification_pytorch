@@ -7,7 +7,7 @@ MASTER_PORT=$5
 RESUME=$6
 
 # ------------------- Training setting -------------------
-MAX_EPOCH=90
+MAX_EPOCH=120
 WP_EPOCH=-1
 EVAL_EPOCH=5
 BASE_LR=0.1
@@ -25,7 +25,6 @@ if [ $WORLD_SIZE == 1 ]; then
                     --batch_size ${BATCH_SIZE} \
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
-                    --use_pixel_statistic \
                     --resume ${RESUME}
 elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
     python -m torch.distributed.run --nproc_per_node=${WORLD_SIZE} --master_port ${MASTER_PORT} train.py \
@@ -39,10 +38,8 @@ elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
                     --batch_size ${BATCH_SIZE} \
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
-                    --use_pixel_statistic \
                     --world_size ${WORLD_SIZE} \
-                    --resume ${RESUME} \
-                    --sybn
+                    --resume ${RESUME}
 else
     echo "The WORLD_SIZE is set to a value greater than 8, indicating the use of multi-machine \
           multi-card training mode, which is currently unsupported."
