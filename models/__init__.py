@@ -30,7 +30,7 @@ def build_model(args):
         raise NotImplementedError("Unknown model: {}".format(args.model))
         
     if args.resume and args.resume != "None":
-        print('keep training: ', args.resume)
+        print('Load model from the checkpoint: ', args.resume)
         checkpoint = torch.load(args.resume, map_location='cpu')
         # checkpoint state dict
         checkpoint_state_dict = checkpoint.pop("model")
