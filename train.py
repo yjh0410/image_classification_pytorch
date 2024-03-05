@@ -14,8 +14,11 @@ import torchvision
 from torchvision import transforms as tf
 
 from models import build_model
+
 from utils import distributed_utils
-from utils.misc import ModelEMA, accuracy, SmoothedValue, MetricLogger
+from utils.misc import build_dataloader
+from utils.misc import ModelEMA, accuracy
+from utils.misc import SmoothedValue, MetricLogger
 from utils.com_flops_params import FLOPs_and_Params
 
 
@@ -28,8 +31,6 @@ def parse_args():
                         help='number of workers')
     parser.add_argument('--path_to_save', type=str, 
                         default='weights/')
-    parser.add_argument('--tfboard', action='store_true', default=False,
-                        help='use tensorboard')
     parser.add_argument('--eval_first', action='store_true', default=False,
                         help='use tensorboard')
     # Epoch
@@ -42,12 +43,6 @@ def parse_args():
     parser.add_argument('--eval_epoch', type=int, default=1, 
                         help='max epoch')
     # Optimizer
-    parser.add_argument('-opt', '--optimizer', type=str, default='adamw',
-                        help='sgd, adam')
-    parser.add_argument('-wd', '--weight_decay', type=float, default=0.05,
-                        help='weight decay')
-    parser.add_argument('-mn', '--momentum', type=float, default=0.9,
-                        help='momentum for SGD')
     parser.add_argument('--grad_accumulate', type=int, default=1,
                         help='gradient grad_accumulate')
     parser.add_argument('--base_lr', type=float,
@@ -55,8 +50,8 @@ def parse_args():
     parser.add_argument('--min_lr', type=float,
                         default=1e-6, help='the final lr')
     # Model
-    parser.add_argument('-m', '--model', type=str, default='resnet18',
-                        help='resnet18, resnet34, ...')
+    parser.add_argument('-m', '--model', type=str, default='rtcnet_n',
+                        help='rtcnet_n, rtcnet_s, ...')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='keep training')
     parser.add_argument('--ema', action='store_true', default=False,
@@ -153,10 +148,11 @@ def main():
     epoch_size = len(train_loader)
 
     # ---------------------------------- Build Optimizer ----------------------------------
-    print("Optimizer: {}".format(args.optimizer))
     args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
     args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 1024
-    optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=args.weight_decay)
+    optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
+    print("Base lr: ", args.base_lr)
+    print("Min lr:  ", args.min_lr)
     start_epoch = 0
     if args.resume and args.resume != 'None':
         print('Load optimizer from the checkpoint: ', args.resume)
@@ -305,32 +301,7 @@ def validate(device, val_loader, model, criterion):
     model.train()
 
     return loss, acc1
-
-
-def set_lr(optimizer, lr):
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-
-
-def build_dataloader(args, dataset):
-    # distributed
-    if args.distributed:
-        sampler = torch.utils.data.distributed.DistributedSampler(dataset)
-    else:
-        sampler = torch.utils.data.RandomSampler(dataset)
-
-    batch_sampler_train = torch.utils.data.BatchSampler(sampler, 
-                                                        args.batch_size, 
-                                                        drop_last=True)
-
-    dataloader = torch.utils.data.DataLoader(dataset, 
-                                             batch_sampler=batch_sampler_train,
-                                             num_workers=args.num_workers,
-                                             pin_memory=True)
     
-    return dataloader
-    
-
 
 if __name__ == "__main__":
     main()

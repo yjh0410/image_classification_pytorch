@@ -161,12 +161,48 @@ class MetricLogger(object):
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print('{} Total time: {} ({:.4f} s / it)'.format(
             header, total_time_str, total_time / len(iterable)))
-        
 
+def accuracy(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.reshape(1, -1).expand_as(pred))
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
+
+
+# ---------------------------- Dataset tools ----------------------------
+def build_dataloader(args, dataset):
+    # distributed
+    if args.distributed:
+        sampler = torch.utils.data.distributed.DistributedSampler(dataset)
+    else:
+        sampler = torch.utils.data.RandomSampler(dataset)
+
+    batch_sampler_train = torch.utils.data.BatchSampler(sampler, 
+                                                        args.batch_size, 
+                                                        drop_last=True)
+
+    dataloader = torch.utils.data.DataLoader(dataset, 
+                                             batch_sampler=batch_sampler_train,
+                                             num_workers=args.num_workers,
+                                             pin_memory=True)
+    
+    return dataloader
+
+
+# ---------------------------- Model tools ----------------------------
 def is_parallel(model):
     # Returns True if model is of type DP or DDP
     return type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel)
-
 
 class ModelEMA(object):
     def __init__(self, model, decay=0.9999, tau=2000., updates=0):
@@ -188,21 +224,3 @@ class ModelEMA(object):
                 if v.dtype.is_floating_point:
                     v *= d
                     v += (1. - d) * msd[k].detach()
-
-
-def accuracy(output, target, topk=(1,)):
-    """Computes the accuracy over the k top predictions for the specified values of k"""
-    with torch.no_grad():
-        maxk = max(topk)
-        batch_size = target.size(0)
-
-        _, pred = output.topk(maxk, 1, True, True)
-        pred = pred.t()
-        correct = pred.eq(target.reshape(1, -1).expand_as(pred))
-
-        res = []
-        for k in topk:
-            correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
-            res.append(correct_k.mul_(100.0 / batch_size))
-        return res
-
