@@ -244,8 +244,6 @@ def main():
             metric_logger.update(acc1=acc[0].item())
             metric_logger.update(acc5=acc[1].item())
 
-            break
-
         # evaluate
         if distributed_utils.is_main_process():
             if (epoch % args.eval_epoch) == 0 or (epoch == args.max_epoch - 1):
