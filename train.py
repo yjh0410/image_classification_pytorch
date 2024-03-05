@@ -164,13 +164,13 @@ def main():
 
     # ---------------------------------- Build Optimizer ----------------------------------
     if   args.optimizer == "sgd":
-        optimizer = optim.SGD(model_without_ddp.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
         args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 256
         args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 256
+        optimizer = optim.SGD(model_without_ddp.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
     elif args.optimizer == "adamw":
-        optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
         args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
         args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 1024
+        optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
     print("Base lr: {}".format(args.base_lr))
     print("Min lr : {}".format(args.min_lr))
     print("Optimizer: {}".format(args.optimizer))
