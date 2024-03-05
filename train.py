@@ -1,6 +1,5 @@
 from copy import deepcopy
 import os
-import time
 import math
 import argparse
 import numpy as np
@@ -30,6 +29,8 @@ def parse_args():
     parser.add_argument('--path_to_save', type=str, 
                         default='weights/')
     parser.add_argument('--tfboard', action='store_true', default=False,
+                        help='use tensorboard')
+    parser.add_argument('--eval_first', action='store_true', default=False,
                         help='use tensorboard')
     # Epoch
     parser.add_argument('--wp_epoch', type=int, default=20, 
@@ -185,6 +186,13 @@ def main():
     # ------------------------- Build Criterion -------------------------
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
+    # ------------------------- Evaluation first Pipeline -------------------------
+    if args.eval_first:
+        print('evaluating ...')
+        loss, acc1 = validate(device, val_loader, model_without_ddp, criterion)
+        print('Eval Results: [loss: %.2f][acc1: %.2f]' % (loss.item(), acc1[0].item()), flush=True)
+        return
+
     # ------------------------- Training Pipeline -------------------------
     print("=================== Start training ===================")
     for epoch in range(start_epoch, args.max_epoch):
@@ -194,7 +202,7 @@ def main():
         metric_logger = MetricLogger(delimiter="  ")
         metric_logger.add_meter('lr', SmoothedValue(window_size=1, fmt='{value:.6f}'))
         header = 'Epoch: [{} / {}]'.format(epoch, args.max_epoch)
-        print_freq = 10
+        print_freq = 50
         
         # train one epoch
         for iter_i, (images, target) in enumerate(metric_logger.log_every(train_loader, print_freq, header)):
@@ -231,10 +239,12 @@ def main():
                     model_ema.update(model)
 
             # Update log
-            metric_logger.update(loss=loss)
+            metric_logger.update(loss=loss.item() * args.grad_accumulate)
             metric_logger.update(lr=optimizer.param_groups[0]["lr"])
             metric_logger.update(acc1=acc[0].item())
             metric_logger.update(acc5=acc[1].item())
+
+            break
 
         # evaluate
         if distributed_utils.is_main_process():
