@@ -272,7 +272,8 @@ def main():
         if distributed_utils.is_main_process():
             if (epoch % args.eval_epoch) == 0 or (epoch == args.max_epoch - 1):
                 print('evaluating ...')
-                loss, acc1 = validate(device, val_loader, model_without_ddp, criterion)
+                model_eval = model_ema.ema if model_ema is not None else model_without_ddp
+                loss, acc1 = validate(device, val_loader, model_eval, criterion)
                 print('Eval Results: [loss: %.2f][acc1: %.2f]' % (loss.item(), acc1[0].item()), flush=True)
 
                 is_best = acc1 > best_acc1
