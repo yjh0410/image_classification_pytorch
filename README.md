@@ -63,9 +63,9 @@ PyTorch >= 1.9.1 and Torchvision >= 0.10.1
 
 |    Model      | Epoch | size | acc@1 | GFLOPs | Params |  Weight |
 |---------------|-------|------|-------|--------|--------|---------|
-| RTCNet-P      | 120   | 224  |       |        |        |  |
-| RTCNet-N      | 120   | 224  |       |        |        |  |
-| RTCNet-S      | 120   | 224  |       |        |        |  |
-| RTCNet-M      | 120   | 224  |       |        |        |  |
-| RTCNet-L      | 120   | 224  |       |        |        |  |
-| RTCNet-X      | 120   | 224  |       |        |        |  |
+| RTCNet-P      | 90    | 224  |       |        |        |  |
+| RTCNet-N      | 90    | 224  | 60.7  |  0.38  | 1.36 M |  |
+| RTCNet-S      | 90    | 224  |       |  1.47  | 4.94 M |  |
+| RTCNet-M      | 90    | 224  |       |        |        |  |
+| RTCNet-L      | 90    | 224  |       |        |        |  |
+| RTCNet-X      | 90    | 224  |       |        |        |  |
