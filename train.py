@@ -179,6 +179,7 @@ def main():
     # ---------------------------------- Build Model EMA ----------------------------------
     model_ema = None
     if args.ema:
+        print("Build model ema for {}".format(args.model))
         update_init = start_epoch * epoch_size
         model_ema = ModelEMA(model, decay=0.9999, tau=2000., updates=update_init)
 
