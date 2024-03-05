@@ -101,16 +101,6 @@ def main():
     else:
         device = torch.device("cpu")
 
-    # ------------------------- Build Tensorboard -------------------------
-    if args.tfboard:
-        print('use tensorboard')
-        from torch.utils.tensorboard import SummaryWriter
-        c_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
-        log_path = os.path.join('log/', args.dataset, c_time)
-        os.makedirs(log_path, exist_ok=True)
-
-        tblogger = SummaryWriter(log_path)
-
     # ------------------------- Build Dataset -------------------------
     ## train dataset
     train_dataset = torchvision.datasets.ImageFolder(
@@ -143,7 +133,7 @@ def main():
 
     # ------------------------- Build Model -------------------------
     ## build model
-    model = build_model(args.model, args.pretrained, args.num_classes, args.resume)
+    model = build_model(args.model)
     model.train().to(device)
     model_without_ddp = model
     print(model)
