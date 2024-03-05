@@ -8,7 +8,7 @@ RESUME=$5
 # ------------------- Training setting -------------------
 BATCH_SIZE=128
 GRAD_ACCUM=32
-MAX_EPOCH=100
+MAX_EPOCH=90
 WP_EPOCH=10
 EVAL_EPOCH=5
 BASE_LR=1e-3
@@ -27,7 +27,6 @@ if [ $WORLD_SIZE == 1 ]; then
                     --grad_accumulate ${GRAD_ACCUM} \
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
-                    --use_pixel_statistic \
                     --ema \
                     --resume ${RESUME}
 elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
@@ -42,7 +41,6 @@ elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
                     --batch_size ${BATCH_SIZE} \
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
-                    --use_pixel_statistic \
                     --world_size ${WORLD_SIZE} \
                     --resume ${RESUME} \
                     --ema \

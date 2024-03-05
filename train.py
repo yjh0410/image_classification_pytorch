@@ -16,43 +16,47 @@ from torchvision import transforms as tf
 
 from models import build_model
 from utils import distributed_utils
-from utils.misc import ModelEMA, accuracy
+from utils.misc import ModelEMA, accuracy, SmoothedValue, MetricLogger
 from utils.com_flops_params import FLOPs_and_Params
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     # Basic
-    parser.add_argument('--img_size', type=int, default=224,
-                        help='input image size')
-    parser.add_argument('--batch_size', type=int, default=256,
-                        help='batch size')
+    parser.add_argument('--cuda', action='store_true', default=False,
+                        help='use cuda')
+    parser.add_argument('--batch_size', type=int,
+                        default=256, help='batch size')
     parser.add_argument('--num_workers', type=int, default=4,
                         help='number of workers')
     parser.add_argument('--path_to_save', type=str, 
                         default='weights/')
-    parser.add_argument('--fp16', action='store_true', default=False, 
-                        help='enable amp training.')
+    parser.add_argument('--tfboard', action='store_true', default=False,
+                        help='use tensorboard')
     # Epoch
-    parser.add_argument('--wp_epoch', type=int, default=1, 
+    parser.add_argument('--wp_epoch', type=int, default=20, 
                         help='warmup epoch')
     parser.add_argument('--start_epoch', type=int, default=0, 
                         help='start epoch')
-    parser.add_argument('--max_epoch', type=int, default=120, 
+    parser.add_argument('--max_epoch', type=int, default=300, 
                         help='max epoch')
-    parser.add_argument('--eval_epoch', type=int, default=10, 
+    parser.add_argument('--eval_epoch', type=int, default=1, 
                         help='max epoch')
     # Optimizer
-    parser.add_argument('--optimizer', type=str, default='sgd', choices=['sgd', 'adamw'],
-                        help='optimizer')
+    parser.add_argument('-opt', '--optimizer', type=str, default='adamw',
+                        help='sgd, adam')
+    parser.add_argument('-wd', '--weight_decay', type=float, default=0.05,
+                        help='weight decay')
+    parser.add_argument('-mn', '--momentum', type=float, default=0.9,
+                        help='momentum for SGD')
     parser.add_argument('--grad_accumulate', type=int, default=1,
                         help='gradient grad_accumulate')
     parser.add_argument('--base_lr', type=float,
-                        default=1e-1, help='learning rate for training model with 256 batch size')
+                        default=1e-3, help='learning rate for training model')
     parser.add_argument('--min_lr', type=float,
-                        default=1e-3, help='the learning rate for training model with 256 batch size')
+                        default=1e-6, help='the final lr')
     # Model
-    parser.add_argument('-m', '--model', type=str, default='darknet19',
+    parser.add_argument('-m', '--model', type=str, default='resnet18',
                         help='resnet18, resnet34, ...')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='keep training')
@@ -62,8 +66,6 @@ def parse_args():
                         help='number of classes')
     # Dataset
     parser.add_argument('-root', '--data_path', type=str, default='/mnt/share/ssd2/dataset',
-                        help='path to dataset')
-    parser.add_argument('--use_pixel_statistic', action='store_true', default=False,
                         help='path to dataset')
     # DDP train
     parser.add_argument('-dist', '--distributed', action='store_true', default=False,
@@ -85,58 +87,53 @@ def main():
     path_to_save = os.path.join(args.path_to_save, args.model)
     os.makedirs(path_to_save, exist_ok=True)
     
-    # ---------------------------- Build DDP ----------------------------
-    local_rank = local_process_rank = -1
+    # ------------------------- Build DDP environment -------------------------
+    print('World size: {}'.format(distributed_utils.get_world_size()))
     if args.distributed:
         distributed_utils.init_distributed_mode(args)
         print("git:\n  {}\n".format(distributed_utils.get_sha()))
-        try:
-            # Multiple Mechine & Multiple GPUs (world size > 8)
-            local_rank = torch.distributed.get_rank()
-            local_process_rank = int(os.getenv('LOCAL_PROCESS_RANK', '0'))
-        except:
-            # Single Mechine & Multiple GPUs (world size <= 8)
-            local_rank = local_process_rank = torch.distributed.get_rank()
-    world_size = distributed_utils.get_world_size()
-    print("LOCAL RANK: ", local_rank)
-    print("LOCAL_PROCESS_RANL: ", local_process_rank)
-    print('WORLD SIZE: {}'.format(world_size))
 
     # ------------------------- Build CUDA -------------------------
-    if torch.cuda.is_available():
+    if args.cuda:
         print("use cuda")
         cudnn.benchmark = True
         device = torch.device("cuda")
     else:
-        print("use cpu")
         device = torch.device("cpu")
 
+    # ------------------------- Build Tensorboard -------------------------
+    if args.tfboard:
+        print('use tensorboard')
+        from torch.utils.tensorboard import SummaryWriter
+        c_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
+        log_path = os.path.join('log/', args.dataset, c_time)
+        os.makedirs(log_path, exist_ok=True)
+
+        tblogger = SummaryWriter(log_path)
+
     # ------------------------- Build Dataset -------------------------
-    pixel_mean = [0.485, 0.456, 0.406] if args.use_pixel_statistic else [0., 0., 0.]
-    pixel_std  = [0.229, 0.224, 0.225] if args.use_pixel_statistic else [1., 1., 1.]
-    print("Pixel mean: {}".format(pixel_mean))
-    print("Pixel std:  {}".format(pixel_std))
     ## train dataset
     train_dataset = torchvision.datasets.ImageFolder(
                         root=os.path.join(args.data_path, 'train'),
                         transform=tf.Compose([
-                            tf.RandomResizedCrop(args.img_size),
-                            tf.RandomHorizontalFlip(),
+                            tf.RandomResizedCrop(224),
+                            tf.RandomHorizontalFlip(args.hflip),
                             tf.ToTensor(),
-                            tf.Normalize(pixel_mean, pixel_std)]))
-    train_loader = build_dataloader(args, train_dataset, args.batch_size // world_size)
-    epoch_size = len(train_loader)
+                            tf.Normalize([0.485, 0.456, 0.406],
+                                         [0.229, 0.224, 0.225])]))
+    train_loader = build_dataloader(args, train_dataset)
     ## val dataset
     val_dataset = torchvision.datasets.ImageFolder(
                         root=os.path.join(args.data_path, 'val'), 
                         transform=tf.Compose([
-                            tf.Resize(int(256 / 224 * args.img_size)),
-                            tf.CenterCrop(args.img_size),
+                            tf.Resize(256),
+                            tf.CenterCrop(224),
                             tf.ToTensor(),
-                            tf.Normalize(pixel_mean, pixel_std)]))
+                            tf.Normalize([0.485, 0.456, 0.406],
+                                         [0.229, 0.224, 0.225])]))
     val_loader = torch.utils.data.DataLoader(
                         dataset=val_dataset,
-                        batch_size=256, 
+                        batch_size=args.batch_size, 
                         shuffle=False,
                         num_workers=args.num_workers, 
                         pin_memory=True)
@@ -146,50 +143,46 @@ def main():
 
     # ------------------------- Build Model -------------------------
     ## build model
-    model = build_model(args)
+    model = build_model(args.model, args.pretrained, args.num_classes, args.resume)
     model.train().to(device)
-    model_without_ddp = model
     print(model)
     ## compute FLOPs & Params
     if distributed_utils.is_main_process:
-        model_copy = deepcopy(model)
+        model_copy = deepcopy(model_without_ddp)
         model_copy.eval()
-        FLOPs_and_Params(model=model_copy, size=args.img_size)
+        FLOPs_and_Params(model=model_copy, size=224)
         model_copy.train()
     if args.distributed:
         # wait for all processes to synchronize
         dist.barrier()
+    ## EMA Model
+    if args.ema:
+        print('use EMA ...')
+        model_ema = ModelEMA(model, args.start_epoch*epoch_size)
+    else:
+        model_ema = None
+
+    # ------------------------- Build DDP Model -------------------------
+    model_without_ddp = model
+    if args.distributed:
+        model = DDP(model, device_ids=[args.gpu])
+        model_without_ddp = model.module
+
+    # ------------------------- Train Config -------------------------
+    best_acc1 = -1.
+    epoch_size = len(train_loader)
 
     # ---------------------------------- Build Optimizer ----------------------------------
-    if   args.optimizer == "sgd":
-        args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 256
-        args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 256
-        optimizer = optim.SGD(model_without_ddp.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
-    elif args.optimizer == "adamw":
-        args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
-        args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 1024
-        optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
-    print("Base lr: {}".format(args.base_lr))
-    print("Min lr : {}".format(args.min_lr))
     print("Optimizer: {}".format(args.optimizer))
-
+    args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
+    args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 1024
+    optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=args.weight_decay)
     start_epoch = 0
-    if args.resume and args.resume != "None":
-        print('Load lr scheduler & optimizer from checkpoint: ', args.resume)
-        checkpoint = torch.load(args.resume, map_location='cpu')
-        # checkpoint state dict
-        lr_scheduler.load_state_dict(checkpoint.pop("lr_scheduler"))
+    if args.resume and args.resume != 'None':
+        print('Load optimizer from the checkpoint: ', args.resume)
+        checkpoint = torch.load(args.resume)
         optimizer.load_state_dict(checkpoint.pop("optimizer"))
         start_epoch = checkpoint.pop("epoch") + 1
-        del checkpoint
-
-
-    # ---------------------------------- Build Model EMA ----------------------------------
-    model_ema = None
-    if args.ema:
-        print("Build model ema for {}".format(args.model))
-        update_init = start_epoch * epoch_size
-        model_ema = ModelEMA(model, decay=0.9999, tau=2000., updates=update_init)
 
     # ------------------------- Build Lr Scheduler -------------------------
     lf = lambda x: ((1 - math.cos(x * math.pi / args.max_epoch)) / 2) * (args.min_lr / args.base_lr - 1) + 1
@@ -198,87 +191,65 @@ def main():
     if args.resume and args.resume != 'None':
         lr_scheduler.step()
 
-    # ------------------------- Build DDP Model -------------------------
-    if args.distributed:
-        model = DDP(model, device_ids=[args.gpu])
-        if args.sybn:
-            print('use SyncBatchNorm ...')
-            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        model_without_ddp = model.module
-
     # ------------------------- Build Criterion -------------------------
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
     # ------------------------- Training Pipeline -------------------------
-    t0 = time.time()
-    best_acc1 = -1.
-    total_iters = 0
-    nw = epoch_size * args.wp_epoch
     print("=================== Start training ===================")
     for epoch in range(start_epoch, args.max_epoch):
         if args.distributed:
             train_loader.batch_sampler.sampler.set_epoch(epoch)
 
+        metric_logger = MetricLogger(delimiter="  ")
+        metric_logger.add_meter('lr', SmoothedValue(window_size=1, fmt='{value:.6f}'))
+        header = 'Epoch: [{} / {}]'.format(epoch, args.max_epoch)
+        print_freq = 10
+        
         # train one epoch
-        for iter_i, (images, target) in enumerate(train_loader):
-            total_iters += 1
+        for iter_i, (images, target) in enumerate(metric_logger.log_every(train_loader, print_freq, header)):
             ni = iter_i + epoch * epoch_size
+            nw = args.wp_epoch * epoch_size
             # Warmup
             if ni <= nw:
                 xi = [0, nw]  # x interp
-                for j, x in enumerate(optimizer.param_groups):
-                    # bias lr falls from 0.1 to lr0, all other lrs rise from 0.0 to lr0
-                    x['lr'] = np.interp(
-                        ni, xi, [0.0, x['initial_lr'] * lf(epoch)])
+                for x in optimizer.param_groups:
+                    x['lr'] = np.interp(ni, xi, [0.0, x['initial_lr'] * lf(epoch)])
 
-            # To device
             images = images.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
 
             # Inference
             output = model(images)
+
+            # Loss
             loss = criterion(output, target)
-            loss /= args.grad_accumulate
 
             # Accuracy
             acc = accuracy(output, target, topk=(1, 5,))            
 
             # Backward
-            loss.backward()
+            loss /= args.grad_accumulate
+            loss.backward() 
 
             # Update
-            if total_iters % args.grad_accumulate == 0:
+            if ni % args.grad_accumulate == 0:
                 optimizer.step()
                 optimizer.zero_grad()
 
-                if model_ema is not None:
+                if args.ema:
                     model_ema.update(model)
 
-            # Logs
-            if distributed_utils.is_main_process() and iter_i % 10 == 0:
-                t1 = time.time()
-                cur_lr = [param_group['lr']  for param_group in optimizer.param_groups]
-                # basic infor
-                log =  '[Epoch: {}/{}]'.format(epoch, args.max_epoch)
-                log += '[Iter: {}/{}]'.format(iter_i, epoch_size)
-                log += '[lr: {:.6f}]'.format(cur_lr[0])
-                # loss infor
-                log += '[loss: {:.6f}]'.format(loss.item() * args.grad_accumulate)
-                # other infor
-                log += '[acc1: {:.2f}]'.format(acc[0].item())
-                log += '[acc5: {:.2f}]'.format(acc[1].item())
-                log += '[time: {:.2f}]'.format(t1 - t0)
-
-                # print log infor
-                print(log, flush=True)
-                
-                t0 = time.time()
+            # Update log
+            metric_logger.update(loss=loss)
+            metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+            metric_logger.update(acc1=acc[0].item())
+            metric_logger.update(acc5=acc[1].item())
 
         # evaluate
         if distributed_utils.is_main_process():
             if (epoch % args.eval_epoch) == 0 or (epoch == args.max_epoch - 1):
                 print('evaluating ...')
-                model_eval = model_ema.ema if model_ema is not None else model_without_ddp
+                model_eval = model_ema.ema if args.ema else model_without_ddp
                 loss, acc1 = validate(device, val_loader, model_eval, criterion)
                 print('Eval Results: [loss: %.2f][acc1: %.2f]' % (loss.item(), acc1[0].item()), flush=True)
 
@@ -288,15 +259,18 @@ def main():
                     print('saving the model ...')
                     weight_name = '{}_epoch_{}_{:.2f}.pth'.format(args.model, epoch, acc1[0].item())
                     checkpoint_path = os.path.join(path_to_save, weight_name)
-                    torch.save({'model': model_without_ddp.state_dict(),
-                                'mAP': -1.,
+                    torch.save({'model': model_eval.state_dict(),
                                 'optimizer': optimizer.state_dict(),
-                                'lr_scheduler': lr_scheduler.state_dict(),
                                 'epoch': epoch,
-                                }, 
-                                checkpoint_path)               
-
+                                'acc1': best_acc1},
+                                checkpoint_path)                      
+        
+        # LR schedule
         lr_scheduler.step()
+
+        # Gather the stats from all processes
+        metric_logger.synchronize_between_processes()
+        print("Averaged stats:", metric_logger)
 
 
 def validate(device, val_loader, model, criterion):
@@ -334,14 +308,21 @@ def validate(device, val_loader, model, criterion):
     return loss, acc1
 
 
-def build_dataloader(args, dataset, batch_size):
+def set_lr(optimizer, lr):
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
+
+def build_dataloader(args, dataset):
     # distributed
     if args.distributed:
         sampler = torch.utils.data.distributed.DistributedSampler(dataset)
     else:
         sampler = torch.utils.data.RandomSampler(dataset)
 
-    batch_sampler_train = torch.utils.data.BatchSampler(sampler, batch_size, drop_last=True)
+    batch_sampler_train = torch.utils.data.BatchSampler(sampler, 
+                                                        args.batch_size, 
+                                                        drop_last=True)
 
     dataloader = torch.utils.data.DataLoader(dataset, 
                                              batch_sampler=batch_sampler_train,
