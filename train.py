@@ -133,7 +133,7 @@ def main():
 
     # ------------------------- Build Model -------------------------
     ## build model
-    model = build_model(args.model)
+    model = build_model(args)
     model.train().to(device)
     model_without_ddp = model
     print(model)
