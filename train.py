@@ -148,6 +148,7 @@ def main():
     ## build model
     model = build_model(args)
     model.train().to(device)
+    model_without_ddp = model
     print(model)
     ## compute FLOPs & Params
     if distributed_utils.is_main_process:
@@ -159,31 +160,35 @@ def main():
         # wait for all processes to synchronize
         dist.barrier()
 
-    # ------------------------- Build DDP Model -------------------------
-    model_without_ddp = model
-    if args.distributed:
-        model = DDP(model, device_ids=[args.gpu])
-        if args.sybn:
-            print('use SyncBatchNorm ...')
-            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        model_without_ddp = model.module
-
     # ---------------------------------- Build Optimizer ----------------------------------
-    args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 256
-    args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 256
+    if   args.optimizer == "sgd":
+        optimizer = optim.SGD(model_without_ddp.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
+        args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 256
+        args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 256
+    elif args.optimizer == "adamw":
+        optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
+        args.base_lr = args.base_lr * args.batch_size * args.grad_accumulate / 1024
+        args.min_lr  = args.min_lr  * args.batch_size * args.grad_accumulate / 1024
     print("Base lr: {}".format(args.base_lr))
     print("Min lr : {}".format(args.min_lr))
     print("Optimizer: {}".format(args.optimizer))
-    if   args.optimizer == "sgd":
-        optimizer = optim.SGD(model_without_ddp.parameters(), lr=args.base_lr, momentum=0.9, weight_decay=0.0001)
-    elif args.optimizer == "adamw":
-        optimizer = optim.AdamW(model_without_ddp.parameters(), lr=args.base_lr, weight_decay=0.05)
     start_epoch = 0
 
+    # ---------------------------------- Build Model EMA ----------------------------------
+    model_ema = None
+    if args.ema:
+        update_init = start_epoch * epoch_size
+        model_ema = ModelEMA(model, decay=0.9999, tau=2000., updates=update_init)
+
     # ------------------------- Build Lr Scheduler -------------------------
-    lr_step = [args.max_epoch // 3, args.max_epoch // 3 * 2]
-    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=lr_step, gamma=0.1)
-    print("Lr step: {}".format(lr_step))
+    if args.lr_scheduler == "step":
+        lr_step = [args.max_epoch // 3, args.max_epoch // 3 * 2]
+        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=lr_step, gamma=0.1)
+        print("Lr step: {}".format(lr_step))
+    elif args.lr_scheduler == "cosine":
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.max_epoch, eta_min=args.min_lr)
+    print("Lr scheduler: {}".format(args.lr_scheduler))
+
     if args.resume and args.resume != "None":
         print('Load lr scheduler & optimizer from checkpoint: ', args.resume)
         checkpoint = torch.load(args.resume, map_location='cpu')
@@ -193,12 +198,21 @@ def main():
         start_epoch = checkpoint.pop("epoch") + 1
         del checkpoint
 
+    # ------------------------- Build DDP Model -------------------------
+    if args.distributed:
+        model = DDP(model, device_ids=[args.gpu])
+        if args.sybn:
+            print('use SyncBatchNorm ...')
+            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        model_without_ddp = model.module
+
     # ------------------------- Build Criterion -------------------------
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
     # ------------------------- Training Pipeline -------------------------
     t0 = time.time()
     best_acc1 = -1.
+    total_iters = 0
     print("=================== Start training ===================")
     for epoch in range(start_epoch, args.max_epoch):
         if args.distributed:
@@ -206,12 +220,16 @@ def main():
 
         # train one epoch
         for iter_i, (images, target) in enumerate(train_loader):
+            total_iters += 1
+
+            # To device
             images = images.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
 
             # Inference
             output = model(images)
             loss = criterion(output, target)
+            loss /= args.grad_accumulate
 
             # Accuracy
             acc = accuracy(output, target, topk=(1, 5,))            
@@ -220,8 +238,12 @@ def main():
             loss.backward()
 
             # Update
-            optimizer.step()
-            optimizer.zero_grad()
+            if total_iters % args.grad_accumulate == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+
+                if model_ema is not None:
+                    model_ema.update(model)
 
             # Logs
             if distributed_utils.is_main_process() and iter_i % 10 == 0:

@@ -10,11 +10,11 @@ def is_parallel(model):
 
 
 class ModelEMA(object):
-    def __init__(self, model, decay=0.9999, updates=0):
+    def __init__(self, model, decay=0.9999, tau=2000., updates=0):
         # create EMA
         self.ema = deepcopy(model.module if is_parallel(model) else model).eval()  # FP32 EMA
         self.updates = updates
-        self.decay = lambda x: decay * (1 - math.exp(-x / 2000.))
+        self.decay = lambda x: decay * (1 - math.exp(-x / tau))
         for p in self.ema.parameters():
             p.requires_grad_(False)
 
