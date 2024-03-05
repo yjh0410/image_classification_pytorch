@@ -8,7 +8,7 @@ RESUME=$5
 # ------------------- Training setting -------------------
 BATCH_SIZE=128
 GRAD_ACCUM=32
-MAX_EPOCH=90
+MAX_EPOCH=100
 WP_EPOCH=10
 EVAL_EPOCH=5
 BASE_LR=1e-3
