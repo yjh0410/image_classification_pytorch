@@ -45,8 +45,6 @@ def parse_args():
     # Optimizer
     parser.add_argument('--optimizer', type=str, default='sgd', choices=['sgd', 'adamw'],
                         help='optimizer')
-    parser.add_argument('--lr_scheduler', type=str, default='step', choices=['step', 'cosine'],
-                        help='optimizer')
     parser.add_argument('--grad_accumulate', type=int, default=1,
                         help='gradient grad_accumulate')
     parser.add_argument('--base_lr', type=float,
@@ -174,7 +172,17 @@ def main():
     print("Base lr: {}".format(args.base_lr))
     print("Min lr : {}".format(args.min_lr))
     print("Optimizer: {}".format(args.optimizer))
+
     start_epoch = 0
+    if args.resume and args.resume != "None":
+        print('Load lr scheduler & optimizer from checkpoint: ', args.resume)
+        checkpoint = torch.load(args.resume, map_location='cpu')
+        # checkpoint state dict
+        lr_scheduler.load_state_dict(checkpoint.pop("lr_scheduler"))
+        optimizer.load_state_dict(checkpoint.pop("optimizer"))
+        start_epoch = checkpoint.pop("epoch") + 1
+        del checkpoint
+
 
     # ---------------------------------- Build Model EMA ----------------------------------
     model_ema = None
@@ -184,22 +192,11 @@ def main():
         model_ema = ModelEMA(model, decay=0.9999, tau=2000., updates=update_init)
 
     # ------------------------- Build Lr Scheduler -------------------------
-    if args.lr_scheduler == "step":
-        lr_step = [args.max_epoch // 3, args.max_epoch // 3 * 2]
-        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=lr_step, gamma=0.1)
-        print("Lr step: {}".format(lr_step))
-    elif args.lr_scheduler == "cosine":
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.max_epoch, eta_min=args.min_lr)
-    print("Lr scheduler: {}".format(args.lr_scheduler))
-
-    if args.resume and args.resume != "None":
-        print('Load lr scheduler & optimizer from checkpoint: ', args.resume)
-        checkpoint = torch.load(args.resume, map_location='cpu')
-        # checkpoint state dict
-        lr_scheduler.load_state_dict(checkpoint.pop("lr_scheduler"))
-        optimizer.load_state_dict(checkpoint.pop("optimizer"))
-        start_epoch = checkpoint.pop("epoch") + 1
-        del checkpoint
+    lf = lambda x: ((1 - math.cos(x * math.pi / args.max_epoch)) / 2) * (args.min_lr / args.base_lr - 1) + 1
+    lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
+    lr_scheduler.last_epoch = start_epoch - 1  # do not move
+    if args.resume and args.resume != 'None':
+        lr_scheduler.step()
 
     # ------------------------- Build DDP Model -------------------------
     if args.distributed:
@@ -216,6 +213,7 @@ def main():
     t0 = time.time()
     best_acc1 = -1.
     total_iters = 0
+    nw = epoch_size * args.wp_epoch
     print("=================== Start training ===================")
     for epoch in range(start_epoch, args.max_epoch):
         if args.distributed:
@@ -224,6 +222,14 @@ def main():
         # train one epoch
         for iter_i, (images, target) in enumerate(train_loader):
             total_iters += 1
+            ni = iter_i + epoch * epoch_size
+            # Warmup
+            if ni <= nw:
+                xi = [0, nw]  # x interp
+                for j, x in enumerate(optimizer.param_groups):
+                    # bias lr falls from 0.1 to lr0, all other lrs rise from 0.0 to lr0
+                    x['lr'] = np.interp(
+                        ni, xi, [0.0, x['initial_lr'] * lf(epoch)])
 
             # To device
             images = images.to(device, non_blocking=True)
