@@ -145,6 +145,7 @@ def main():
     ## build model
     model = build_model(args.model, args.pretrained, args.num_classes, args.resume)
     model.train().to(device)
+    model_without_ddp = model
     print(model)
     ## compute FLOPs & Params
     if distributed_utils.is_main_process:
@@ -155,18 +156,6 @@ def main():
     if args.distributed:
         # wait for all processes to synchronize
         dist.barrier()
-    ## EMA Model
-    if args.ema:
-        print('use EMA ...')
-        model_ema = ModelEMA(model, args.start_epoch*epoch_size)
-    else:
-        model_ema = None
-
-    # ------------------------- Build DDP Model -------------------------
-    model_without_ddp = model
-    if args.distributed:
-        model = DDP(model, device_ids=[args.gpu])
-        model_without_ddp = model.module
 
     # ------------------------- Train Config -------------------------
     best_acc1 = -1.
@@ -190,6 +179,18 @@ def main():
     lr_scheduler.last_epoch = start_epoch - 1  # do not move
     if args.resume and args.resume != 'None':
         lr_scheduler.step()
+
+    # ------------------------- Build Model EMA -------------------------
+    if args.ema:
+        print('Build Model EMA for {}'.format(args.model))
+        model_ema = ModelEMA(model, decay=0.9999, tau=2000., updates=start_epoch*epoch_size)
+    else:
+        model_ema = None
+
+    # ------------------------- Build DDP Model -------------------------
+    if args.distributed:
+        model = DDP(model, device_ids=[args.gpu])
+        model_without_ddp = model.module
 
     # ------------------------- Build Criterion -------------------------
     criterion = torch.nn.CrossEntropyLoss().to(device)
