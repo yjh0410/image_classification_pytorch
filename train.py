@@ -23,8 +23,6 @@ from utils.com_flops_params import FLOPs_and_Params
 def parse_args():
     parser = argparse.ArgumentParser()
     # Basic
-    parser.add_argument('--cuda', action='store_true', default=False,
-                        help='use cuda')
     parser.add_argument('--batch_size', type=int,
                         default=256, help='batch size')
     parser.add_argument('--num_workers', type=int, default=4,
@@ -94,11 +92,12 @@ def main():
         print("git:\n  {}\n".format(distributed_utils.get_sha()))
 
     # ------------------------- Build CUDA -------------------------
-    if args.cuda:
+    if torch.cuda.is_available():
         print("use cuda")
         cudnn.benchmark = True
         device = torch.device("cuda")
     else:
+        print("use cpu")
         device = torch.device("cpu")
 
     # ------------------------- Build Dataset -------------------------
@@ -143,6 +142,7 @@ def main():
         model_copy.eval()
         FLOPs_and_Params(model=model_copy, size=224)
         model_copy.train()
+        del model_copy
     if args.distributed:
         # wait for all processes to synchronize
         dist.barrier()
