@@ -45,6 +45,8 @@ def parse_args():
     # Optimizer
     parser.add_argument('--optimizer', type=str, default='sgd', choices=['sgd', 'adamw'],
                         help='optimizer')
+    parser.add_argument('--lr_scheduler', type=str, default='step', choices=['step', 'cosine'],
+                        help='optimizer')
     parser.add_argument('--grad_accumulate', type=int, default=1,
                         help='gradient grad_accumulate')
     parser.add_argument('--base_lr', type=float,
