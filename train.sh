@@ -13,13 +13,11 @@ WP_EPOCH=10
 EVAL_EPOCH=5
 BASE_LR=1e-3
 MIN_LR=1e-6
-OPTIMIZER="adamw"
 
 # ------------------- Training pipeline -------------------
 if [ $WORLD_SIZE == 1 ]; then
     python train.py --data_path ${DATASET_ROOT} \
                     --model ${MODEL} \
-                    --optimizer ${OPTIMIZER} \
                     --wp_epoch ${WP_EPOCH} \
                     --max_epoch ${MAX_EPOCH} \
                     --eval_epoch ${EVAL_EPOCH} \
@@ -33,7 +31,6 @@ elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
                     --distributed \
                     --data_path ${DATASET_ROOT} \
                     --model ${MODEL} \
-                    --optimizer ${OPTIMIZER} \
                     --wp_epoch ${WP_EPOCH} \
                     --max_epoch ${MAX_EPOCH} \
                     --eval_epoch ${EVAL_EPOCH} \
