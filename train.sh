@@ -27,7 +27,6 @@ if [ $WORLD_SIZE == 1 ]; then
                     --grad_accumulate ${GRAD_ACCUM} \
                     --base_lr ${BASE_LR} \
                     --min_lr ${MIN_LR} \
-                    --ema \
                     --resume ${RESUME}
 elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
     python -m torch.distributed.run --nproc_per_node=${WORLD_SIZE} --master_port ${MASTER_PORT} train.py \
@@ -43,7 +42,6 @@ elif [[ $WORLD_SIZE -gt 1 && $WORLD_SIZE -le 8 ]]; then
                     --min_lr ${MIN_LR} \
                     --world_size ${WORLD_SIZE} \
                     --resume ${RESUME} \
-                    --ema \
                     --sybn
 else
     echo "The WORLD_SIZE is set to a value greater than 8, indicating the use of multi-machine \
