@@ -205,11 +205,11 @@ def is_parallel(model):
     return type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel)
 
 class ModelEMA(object):
-    def __init__(self, model, decay=0.9999, tau=2000., updates=0):
+    def __init__(self, model, decay=0.9999, updates=0):
         # create EMA
         self.ema = deepcopy(model.module if is_parallel(model) else model).eval()  # FP32 EMA
         self.updates = updates
-        self.decay = lambda x: decay * (1 - math.exp(-x / tau))
+        self.decay = decay
         for p in self.ema.parameters():
             p.requires_grad_(False)
 
@@ -217,10 +217,8 @@ class ModelEMA(object):
         # Update EMA parameters
         with torch.no_grad():
             self.updates += 1
-            d = self.decay(self.updates)
-
             msd = model.module.state_dict() if is_parallel(model) else model.state_dict()  # model state_dict
             for k, v in self.ema.state_dict().items():
                 if v.dtype.is_floating_point:
-                    v *= d
-                    v += (1. - d) * msd[k].detach()
+                    v *= self.decay
+                    v += (1. - self.decay) * msd[k].detach()
