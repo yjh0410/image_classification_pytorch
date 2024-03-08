@@ -169,7 +169,7 @@ def main():
     # ------------------------- Build Model EMA -------------------------
     if args.ema:
         print('Build Model EMA for {}'.format(args.model))
-        model_ema = ModelEMA(model, decay=0.9999, updates=start_epoch*epoch_size // args.grad_accumulate)
+        model_ema = ModelEMA(model, decay=0.9999, tau=2000., updates=start_epoch*epoch_size // args.grad_accumulate)
     else:
         model_ema = None
 
